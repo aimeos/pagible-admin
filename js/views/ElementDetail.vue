@@ -7,6 +7,7 @@ import HistoryDialog from '../components/HistoryDialog.vue'
 import ElementDetailRefs from '../components/ElementDetailRefs.vue'
 import ElementDetailItem from '../components/ElementDetailItem.vue'
 import { useUserStore, useDrawerStore, useMessageStore, useViewStack } from '../stores'
+import { write, translate } from '../ai'
 import {
   mdiKeyboardBackspace,
   mdiHistory,
@@ -25,6 +26,13 @@ export default {
 
   props: {
     item: { type: Object, required: true }
+  },
+
+  provide() {
+    return {
+      write: this.writeText,
+      translate: this.translateText
+    }
   },
 
   data: () => ({
@@ -225,6 +233,10 @@ export default {
         return Promise.resolve(true)
       }
 
+      if (!this.item.name) {
+        this.item.name = this.title(this.item.data)
+      }
+
       this.saving = true
 
       return this.$apollo
@@ -272,10 +284,38 @@ export default {
         })
     },
 
+    title(data) {
+      return (
+        (
+          data?.title ||
+          data?.text ||
+          Object.values(data || {})
+            .map((v) => (v && typeof v !== 'object' && typeof v !== 'boolean' ? v : null))
+            .filter((v) => !!v)
+            .join(' - ')
+        ).substring(0, 100) || ''
+      )
+    },
+
+    writeText(prompt, context = [], files = []) {
+      if (!Array.isArray(context)) {
+        context = [context]
+      }
+
+      context.push('element data as JSON: ' + JSON.stringify(this.item.data))
+      context.push('required output language: ' + (this.item.lang || 'en'))
+
+      return write(prompt, context, files)
+    },
+
     use(version) {
       Object.assign(this.item, version.data)
       this.vhistory = false
       this.changed = true
+    },
+
+    translateText(texts, to, from = null) {
+      return translate(texts, to, from || this.item.lang)
     },
 
     versions(id) {
@@ -447,7 +487,7 @@ export default {
     </template>
   </v-app-bar>
 
-  <v-main class="element-details" :aria-label="$gettext('Elements')">
+  <v-main class="element-details" :aria-label="$gettext('Element')">
     <v-form @submit.prevent>
       <v-tabs fixed-tabs v-model="tab">
         <v-tab value="element" :class="{ changed: changed, error: error }">{{
