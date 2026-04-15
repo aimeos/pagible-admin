@@ -324,6 +324,12 @@ export default {
       delete filter.publish
       delete filter.view
 
+      for(const key in filter) {
+        if(filter[key] === null) {
+          delete filter[key]
+        }
+      }
+
       filter.parent_id = parent
 
       return this.$apollo
@@ -917,6 +923,12 @@ export default {
       delete filter.trashed
       delete filter.publish
       delete filter.view
+
+      for(const key in filter) {
+        if(filter[key] === null) {
+          delete filter[key]
+        }
+      }
 
       if (this.term) {
         filter.any = this.term
@@ -1627,5 +1639,14 @@ export default {
   .tree-node-inner {
     padding: 4px 0;
   }
+}
+
+.sr-only {
+  position: absolute;
+  clip-path: inset(50%);
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  white-space: nowrap;
 }
 </style>
