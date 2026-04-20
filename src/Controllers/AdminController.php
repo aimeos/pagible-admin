@@ -59,14 +59,13 @@ class AdminController extends Controller
 
         if (!$request->user()) {
             try {
-                $cookie = $request->cookie('cms_proxy') ?? '';
-                [$userId, $expires] = explode('|', decrypt(is_array($cookie) ? '' : $cookie));
+                [$expires, $hmac] = explode( '|', base64_decode( (string) $request->query( 'token', '' ) ) );
 
-                if ((int) $expires < now()->timestamp) {
-                    abort(403, 'Proxy cookie expired');
+                if( !hash_equals( hash_hmac( 'sha256', $expires, config( 'app.key' ) ), $hmac ) || (int) $expires < now()->timestamp ) {
+                    abort( 403, 'Unauthorized' );
                 }
-            } catch (\Exception $e) {
-                abort(403, 'Unauthorized');
+            } catch( \Exception $e ) {
+                abort( 403, 'Unauthorized' );
             }
         }
 
