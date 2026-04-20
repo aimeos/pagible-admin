@@ -57,16 +57,14 @@ class AdminController extends Controller
             abort(405, "Unsupported HTTP method: $method");
         }
 
-        if (!$request->user()) {
-            try {
-                [$expires, $hmac] = explode( '|', base64_decode( (string) $request->query( 'token', '' ) ) );
+        try {
+            [$expires, $hmac] = explode( '|', base64_decode( (string) $request->query( 'token', '' ) ) );
 
-                if( !hash_equals( hash_hmac( 'sha256', $expires, config( 'app.key' ) ), $hmac ) || (int) $expires < now()->timestamp ) {
-                    abort( 403, 'Unauthorized' );
-                }
-            } catch( \Exception $e ) {
+            if( !hash_equals( hash_hmac( 'sha256', $expires, config( 'app.key' ) ), $hmac ) || (int) $expires < now()->timestamp ) {
                 abort( 403, 'Unauthorized' );
             }
+        } catch( \Exception $e ) {
+            abort( 403, 'Unauthorized' );
         }
 
         $url = (string) $request->query('url');
