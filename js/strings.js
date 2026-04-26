@@ -44,8 +44,6 @@ if ($pgettext) {
   $pgettext('st', 'cards')
   $pgettext('st', 'blog')
   $pgettext('st', 'article')
-  $pgettext('st', 'questions')
-  $pgettext('st', 'toc')
   $pgettext('st', 'contact')
   $pgettext('st', 'meta-tags')
   $pgettext('st', 'social-media')
@@ -76,7 +74,6 @@ if ($pgettext) {
   // field labels
   $pgettext('fn', 'image')
   $pgettext('fn', 'images')
-  $pgettext('fn', 'items')
   $pgettext('fn', 'introduction')
   $pgettext('fn', 'load immediately')
   $pgettext('fn', 'source code')

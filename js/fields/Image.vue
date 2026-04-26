@@ -16,7 +16,6 @@ import FileAiDialog from '../components/FileAiDialog.vue'
 
 export default {
   extends: File,
-  inheritAttrs: false,
 
   components: {
     FileAiDialog

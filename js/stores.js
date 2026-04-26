@@ -12,7 +12,9 @@ import {
   urlpage,
   urlfile,
   multidomain,
-  locales as appLocales
+  locales as appLocales,
+  config as appConfig,
+  schemas as appSchemas
 } from './config'
 
 export const useAppStore = defineStore('app', {
@@ -64,7 +66,6 @@ export const useUserStore = defineStore('user', {
                 settings
                 email
                 name
-                token
               }
             }
           `
@@ -77,11 +78,6 @@ export const useUserStore = defineStore('user', {
           this.me = response.data.me
             ? { ...response.data.me, permission: JSON.parse(response.data.me.permission || '{}'), settings: JSON.parse(response.data.me.settings || '{}') }
             : false
-
-          if (this.me?.token) {
-            const app = useAppStore()
-            app.urlproxy = urlproxy.replace('url=', 'token=' + encodeURIComponent(this.me.token) + '&url=')
-          }
         })
         .catch((error) => {
           console.error('Failed to fetch user data', error)
@@ -101,7 +97,6 @@ export const useUserStore = defineStore('user', {
                 settings
                 email
                 name
-                token
               }
             }
           `,
@@ -122,11 +117,6 @@ export const useUserStore = defineStore('user', {
           }
           if (this.me?.settings) {
             this.me.settings = JSON.parse(this.me.settings)
-          }
-
-          if (this.me?.token) {
-            const app = useAppStore()
-            app.urlproxy = urlproxy.replace('url=', 'token=' + encodeURIComponent(this.me.token) + '&url=')
           }
 
           return this.me
@@ -245,6 +235,23 @@ export const useClipboardStore = defineStore('clipboard', {
   }
 })
 
+export const useConfigStore = defineStore('config', {
+  state: () => appConfig,
+
+  actions: {
+    get(key, defval = null) {
+      if (typeof key !== 'string') {
+        return defval
+      }
+
+      const val = key.split('.').reduce((part, key) => {
+        return typeof part === 'object' && part !== null ? part[key] : part
+      }, this)
+
+      return typeof val === 'undefined' ? defval : val
+    }
+  }
+})
 
 export const useDrawerStore = defineStore('drawer', {
   state: () => ({
@@ -487,39 +494,10 @@ export const useMessageStore = defineStore('message', {
 })
 
 /**
- * Available element schemas fetched from GraphQL
+ * Available element schemas
  */
-let _loading = null
-
 export const useSchemaStore = defineStore('schema', {
-  state: () => ({ themes: {}, content: {}, meta: {}, config: {} }),
-  actions: {
-    load() {
-      if (_loading) return _loading
-      _loading = apolloClient.query({
-        query: gql`query { schemas { name label types content meta config } }`
-      }).then((result) => {
-        const parse = (v) => typeof v === 'string' ? JSON.parse(v) : v || {}
-        const list = (result.data?.schemas || []).map(t => ({
-          ...t,
-          types: parse(t.types),
-          content: parse(t.content),
-          meta: parse(t.meta),
-          config: parse(t.config)
-        }))
-        this.themes = Object.fromEntries(list.map(t => [t.name, t]))
-        for (const theme of list) {
-          Object.assign(this.content, theme.content)
-          Object.assign(this.meta, theme.meta)
-          Object.assign(this.config, theme.config)
-        }
-      }).catch((err) => {
-        _loading = null
-        throw err
-      })
-      return _loading
-    }
-  }
+  state: () => appSchemas
 })
 
 /**
@@ -567,98 +545,12 @@ export const useSideStore = defineStore('side', {
   }
 })
 
-export const useDirtyStore = defineStore('dirty', {
-  state: () => ({
-    dirty: false,
-    pendingResolve: null,
-    saveFn: null,
-    show: false
-  }),
-
-  actions: {
-    cancel() {
-      this.show = false
-      this.resolve(false)
-    },
-
-    confirm(action) {
-      return new Promise((resolve) => {
-        this.pendingResolve = resolve
-        this.show = true
-        this._action = action
-      })
-    },
-
-    async discard() {
-      await this.finalize()
-    },
-
-    async finalize() {
-      this.dirty = false
-      this.show = false
-
-      const action = this._action
-      this._action = null
-      if (action) await action()
-
-      this.resolve(true)
-    },
-
-    register(saveFn) {
-      this.saveFn = saveFn
-    },
-
-    resolve(value) {
-      const fn = this.pendingResolve
-      this.pendingResolve = null
-      this._action = null
-      if (fn) fn(value)
-    },
-
-    async saveAndLeave() {
-      if (this.saveFn) {
-        const result = await this.saveFn(true)
-        if (result === false) return
-      }
-
-      await this.finalize()
-    },
-
-    set(value) {
-      if (value !== this.dirty) {
-        this.dirty = value
-      }
-    },
-
-    unregister() {
-      this.dirty = false
-      this.saveFn = null
-      this.resolve(false)
-    }
-  }
-})
-
 export const useViewStack = defineStore('viewStack', {
   state: () => ({
     stack: []
   }),
 
   actions: {
-    async closeView() {
-      const dirtyStore = useDirtyStore()
-
-      if (dirtyStore.dirty) {
-        await dirtyStore.confirm(() => {
-          dirtyStore.unregister()
-          this.stack.pop()
-        })
-        return
-      }
-
-      dirtyStore.unregister()
-      this.stack.pop()
-    },
-
     openView(component, props = {}) {
       if (!component) {
         console.error('Component is not defined')
@@ -669,6 +561,10 @@ export const useViewStack = defineStore('viewStack', {
         component: markRaw(component),
         props: props || {}
       })
+    },
+
+    closeView() {
+      this.stack.pop()
     }
   }
 })

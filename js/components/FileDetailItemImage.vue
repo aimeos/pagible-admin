@@ -191,7 +191,7 @@ export default {
         return Promise.resolve(this.images[0]?.blob)
       }
 
-      return fetch(this.url(this.item.path, true), {credentials: 'include'}).then((response) => {
+      return fetch(this.url(this.item.path, true)).then((response) => {
         if (!response.ok) {
           throw new Error('Network error: ' + response.statusText)
         }
@@ -948,7 +948,7 @@ export default {
   top: calc(50% + 16px);
   left: 50%;
   color: #fff;
-  font-size: 100%;
+  font-size: 12px;
   padding: 12px 6px;
   border-radius: 4px;
   white-space: nowrap;

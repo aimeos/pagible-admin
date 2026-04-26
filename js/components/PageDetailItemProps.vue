@@ -5,7 +5,7 @@ import gql from 'graphql-tag'
 import {
   useAppStore,
   useUserStore,
-  useSchemaStore,
+  useConfigStore,
   useLanguageStore,
   useSideStore
 } from '../stores'
@@ -26,12 +26,12 @@ export default {
 
   setup() {
     const languages = useLanguageStore()
-    const schemas = useSchemaStore()
+    const config = useConfigStore()
     const side = useSideStore()
     const user = useUserStore()
     const app = useAppStore()
 
-    return { app, user, side, schemas, languages, debounce, slugify, locales }
+    return { app, user, side, config, languages, debounce, slugify, locales }
   },
 
   created() {
@@ -241,7 +241,7 @@ export default {
             :readonly="readonly"
             :modelValue="item.theme"
             :label="$gettext('Theme')"
-            :items="Object.keys(schemas.themes)"
+            :items="Object.keys(config.get('themes', { cms: '' }))"
             @update:modelValue="themeUpdated"
             variant="underlined"
           ></v-select>
@@ -250,7 +250,7 @@ export default {
             :readonly="readonly"
             :modelValue="item.type"
             :label="$gettext('Page type')"
-            :items="Object.keys(schemas.themes[item.theme || 'cms']?.types || { page: '' })"
+            :items="Object.keys(config.get(`themes.${item.theme || 'cms'}.types`, { page: '' }))"
             @update:modelValue="update('type', $event)"
             variant="underlined"
           ></v-select>

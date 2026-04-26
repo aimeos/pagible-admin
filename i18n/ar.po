@@ -1720,16 +1720,6 @@ msgstr "المقال"
 
 #: js/strings.js:47
 msgctxt "st"
-msgid "questions"
-msgstr ""
-
-#: js/strings.js:48
-msgctxt "st"
-msgid "toc"
-msgstr ""
-
-#: js/strings.js:47
-msgctxt "st"
 msgid "contact"
 msgstr "الاتصال"
 
@@ -1862,11 +1852,6 @@ msgstr "الصورة"
 msgctxt "fn"
 msgid "images"
 msgstr "الصور"
-
-#: js/strings.js:78
-msgctxt "fn"
-msgid "items"
-msgstr ""
 
 #: js/strings.js:77
 msgctxt "fn"

@@ -80,7 +80,7 @@ export default {
 
       this.loading = true
 
-      fetch(this.url(item.path, true), {credentials: 'include'})
+      fetch(this.url(item.path, true))
         .then((response) => {
           return response.blob()
         })
@@ -233,18 +233,27 @@ export default {
     scrollable
   >
     <v-card :loading="loading ? 'primary' : false">
-      <v-toolbar density="compact">
-        <v-toolbar-title>{{ $gettext('Create image') }}</v-toolbar-title>
+      <template v-slot:append>
         <v-btn
           v-if="user.can('audio:transcribe')"
           @click="record()"
           :class="{ dictating: audio }"
           :icon="audio ? mdiMicrophoneOutline : mdiMicrophone"
-          :aria-label="$gettext('Dictate')"
+          :title="$gettext('Dictate')"
           :loading="dictating"
+          variant="text"
         />
-        <v-btn :icon="mdiClose" :aria-label="$gettext('Close')" @click="$emit('update:modelValue', false)" />
-      </v-toolbar>
+        <v-btn
+          @click="$emit('update:modelValue', false)"
+          :title="$gettext('Close')"
+          :icon="mdiClose"
+          variant="text"
+        />
+      </template>
+      <template v-slot:title>
+        {{ $gettext('Create image') }}
+      </template>
+
       <v-card-text>
         <v-textarea
           v-model="chat"

@@ -1,4 +1,4 @@
-import PageDetailItemSection from '../../../js/components/PageDetailItemSection.vue'
+import PageDetailItemMeta from '../../../js/components/PageDetailItemMeta.vue'
 import { useUserStore, useSchemaStore } from '../../../js/stores'
 
 const stubs = {
@@ -34,10 +34,9 @@ function setupSchemaPlugin() {
 }
 
 function mountMeta(props = {}, perms = {}) {
-  return cy.mount(PageDetailItemSection, {
+  return cy.mount(PageDetailItemMeta, {
     props: {
       item: { ...item, meta: { ...item.meta } },
-      section: 'meta',
       assets: {},
       ...props,
     },
@@ -51,7 +50,7 @@ function mountMeta(props = {}, perms = {}) {
   })
 }
 
-describe('PageDetailItemSection (meta)', () => {
+describe('PageDetailItemMeta', () => {
   beforeEach(() => {
     cy.on('uncaught:exception', () => false)
   })
@@ -84,7 +83,7 @@ describe('PageDetailItemSection (meta)', () => {
   it('shows remove button with page:save permission', () => {
     mountMeta({}, { 'page:save': true })
     cy.get('.v-expansion-panel').first().click()
-    cy.get('button[title="Remove content element"]').should('exist')
+    cy.get('.v-expansion-panel-title button').should('exist')
   })
 
   it('renders Fields stub inside expansion panel', () => {

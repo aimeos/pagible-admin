@@ -14,7 +14,6 @@ import File from './File.vue'
 
 export default {
   extends: File,
-  inheritAttrs: false,
 
   setup() {
     return {

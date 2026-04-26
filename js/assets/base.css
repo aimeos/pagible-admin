@@ -242,7 +242,6 @@ input:-webkit-autofill:focus {
 }
 
 .v-btn.v-btn--density-default:not(.v-btn--stacked) {
-  min-width: 48px;
   height: 48px;
 }
 
@@ -391,7 +390,7 @@ input:-webkit-autofill:focus {
 .publish-at,
 .item-status {
   margin-inline-end: 4px;
-  font-size: 125% !important;
+  font-size: 1.25rem !important;
 }
 
 .item-content {

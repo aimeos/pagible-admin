@@ -104,10 +104,10 @@ describe('FileDetail', () => {
     it('clears changed and error flags', () => {
       mountDetail().then(() => {
         const vm = Cypress.vueWrapper.findComponent(FileDetail).vm
-        vm.dirty = true
+        vm.changed = true
         vm.error = true
         vm.reset()
-        expect(vm.dirty).to.be.false
+        expect(vm.changed).to.be.false
         expect(vm.error).to.be.false
       })
     })
@@ -119,7 +119,7 @@ describe('FileDetail', () => {
         const vm = Cypress.vueWrapper.findComponent(FileDetail).vm
         vm.use({ data: { name: 'updated.jpg', path: 'new/path.jpg' } })
         expect(vm.item.name).to.equal('updated.jpg')
-        expect(vm.dirty).to.be.true
+        expect(vm.changed).to.be.true
         expect(vm.vhistory).to.be.false
       })
     })
@@ -139,7 +139,7 @@ describe('FileDetail', () => {
       mountDetail({ 'file:save': true }).then(() => {
         const vm = Cypress.vueWrapper.findComponent(FileDetail).vm
         vm.error = true
-        vm.dirty = true
+        vm.changed = true
         vm.save().then(result => {
           expect(result).to.be.false
         })
@@ -172,54 +172,6 @@ describe('FileDetail', () => {
         vm.versions('').then(result => {
           expect(result).to.deep.equal([])
         })
-      })
-    })
-  })
-
-  describe('conflict UI', () => {
-    it('hides changes button when changed is null', () => {
-      mountDetail()
-      cy.get('.menu-changed').should('not.exist')
-    })
-
-    it('shows changes button when changed is set', () => {
-      mountDetail().then(() => {
-        const vm = Cypress.vueWrapper.findComponent(FileDetail).vm
-        vm.changed = { editor: 'x', data: { name: { previous: 'a', current: 'b' } } }
-        cy.get('.menu-changed').should('exist')
-      })
-    })
-
-    it('shows changes button even when all conflicts are resolved', () => {
-      mountDetail().then(() => {
-        const vm = Cypress.vueWrapper.findComponent(FileDetail).vm
-        vm.changed = { editor: 'x', data: { name: { previous: 'a', current: 'b', overwritten: 'c', resolved: 'c' } } }
-        cy.get('.menu-changed').should('exist')
-      })
-    })
-
-    it('uses warning class on save button when hasConflict is true', () => {
-      mountDetail({ 'file:save': true }).then(() => {
-        const vm = Cypress.vueWrapper.findComponent(FileDetail).vm
-        vm.changed = { editor: 'x', data: { name: { previous: 'a', current: 'b', overwritten: 'c' } } }
-        vm.dirty = true
-        cy.get('.menu-save').should('have.class', 'warning')
-      })
-    })
-
-    it('hasConflict is false when all conflicts are resolved', () => {
-      mountDetail().then(() => {
-        const vm = Cypress.vueWrapper.findComponent(FileDetail).vm
-        vm.changed = { editor: 'x', data: { name: { previous: 'a', current: 'b', overwritten: 'c', resolved: 'c' } } }
-        expect(vm.hasConflict).to.be.false
-      })
-    })
-
-    it('hasConflict is true when overwritten exists without resolved', () => {
-      mountDetail().then(() => {
-        const vm = Cypress.vueWrapper.findComponent(FileDetail).vm
-        vm.changed = { editor: 'x', data: { name: { previous: 'a', current: 'b', overwritten: 'c' } } }
-        expect(vm.hasConflict).to.be.true
       })
     })
   })

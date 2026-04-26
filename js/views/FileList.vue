@@ -22,7 +22,7 @@ import AsideList from '../components/AsideList.vue'
 import Navigation from '../components/Navigation.vue'
 import FileListItems from '../components/FileListItems.vue'
 import { useUserStore, useDrawerStore, useViewStack } from '../stores'
-import { languageFilter } from '../utils'
+import { locales } from '../utils'
 
 export default {
   components: {
@@ -77,7 +77,7 @@ export default {
       mdiDeleteOff,
       mdiDelete,
       mdiAccount,
-      languageFilter
+      locales
     }
   },
 
@@ -86,6 +86,26 @@ export default {
   },
 
   methods: {
+    languages() {
+      const list = [
+        {
+          title: this.$gettext('All'),
+          icon: mdiPlaylistCheck,
+          value: { lang: null }
+        }
+      ]
+
+      for (const entry of this.locales()) {
+        list.push({
+          title: entry.title,
+          icon: mdiTranslate,
+          value: { lang: entry.value }
+        })
+      }
+
+      return list
+    },
+
     open(item) {
       this.viewStack.openView(FileDetail, { item: item })
     }
@@ -174,7 +194,7 @@ export default {
       {
         key: 'lang',
         title: $gettext('languages'),
-        items: languageFilter(mdiPlaylistCheck, mdiTranslate)
+        items: languages()
       }
     ]"
   />

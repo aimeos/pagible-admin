@@ -18,7 +18,6 @@ import {
 } from '../stores'
 import { recording } from '../audio'
 import { transcribe } from '../ai'
-import { changedState } from '../merge'
 import { uid } from '../utils'
 import {
   mdiMenuDown,
@@ -53,7 +52,6 @@ export default {
   props: {
     item: { type: Object, required: true },
     assets: { type: Object, required: true },
-    changed: { type: Object, default: null },
     content: { type: Array, required: true },
     elements: { type: Object, required: true },
     section: { type: String, default: 'main' }
@@ -91,7 +89,6 @@ export default {
       side,
       messages,
       schemas,
-      changedState,
       mdiMenuDown,
       mdiContentCopy,
       mdiContentCut,
@@ -117,7 +114,7 @@ export default {
   },
 
   computed: {
-    dirty() {
+    changed() {
       return this.content.some((el) => el._changed)
     },
 
@@ -812,11 +809,7 @@ export default {
           :key="idx"
           v-show="shown(el)"
           class="content"
-          :class="{
-            changed: el._changed,
-            error: el._error,
-            ...changedState(changed, el.id || el.refid)
-          }"
+          :class="{ changed: el._changed, error: el._error }"
         >
           <v-expansion-panel-title>
             <v-checkbox-btn
@@ -1014,18 +1007,6 @@ export default {
 
 .v-expansion-panel.changed {
   border-inline-start: 3px solid rgb(var(--v-theme-warning));
-}
-
-.v-expansion-panel.merged {
-  border-inline-start: 3px solid rgb(var(--v-theme-info));
-}
-
-.v-expansion-panel.conflict {
-  border-inline-start: 3px solid rgb(var(--v-theme-error));
-}
-
-.v-expansion-panel.conflict .v-expansion-panel-title {
-  color: rgb(var(--v-theme-error));
 }
 
 .v-expansion-panel.error .v-expansion-panel-title {
