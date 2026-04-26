@@ -1,6 +1,6 @@
 <script>
 import PageDetailContentList from './PageDetailContentList.vue'
-import { useConfigStore } from '../stores'
+import { useSchemaStore } from '../stores'
 
 export default {
   components: {
@@ -10,20 +10,21 @@ export default {
   props: {
     item: { type: Object, required: true },
     assets: { type: Object, required: true },
+    changed: { type: Object, default: null },
     elements: { type: Object, required: true }
   },
 
   emits: ['change', 'error'],
 
   data: () => ({
-    changed: {},
+    dirty: {},
     errors: {},
     tab: 'default'
   }),
 
   setup() {
-    const config = useConfigStore()
-    return { config }
+    const schemas = useSchemaStore()
+    return { schemas }
   },
 
   computed: {
@@ -31,7 +32,7 @@ export default {
       const type = this.item.type || 'page'
       const theme = this.item.theme || 'cms'
 
-      return this.config.get(`themes.${theme}.types.${type}.sections`, ['main'])
+      return this.schemas.themes[theme]?.types?.[type]?.sections || ['main']
     },
 
     sections() {
@@ -76,7 +77,7 @@ export default {
     },
 
     reset() {
-      this.changed = {}
+      this.dirty = {}
       this.errors = {}
 
       Array.isArray(this.$refs.content)
@@ -92,7 +93,7 @@ export default {
         return acc.concat(entries)
       }, [])
 
-      this.changed[section] = true
+      this.dirty[section] = true
     }
   }
 }
@@ -107,7 +108,7 @@ export default {
             v-for="(list, section) in sections"
             :key="section"
             :class="{
-              changed: changed[section],
+              changed: dirty[section],
               error: errors[section]
             }"
             :value="section"
@@ -122,6 +123,7 @@ export default {
               :section="section"
               :item="item"
               :assets="assets"
+              :changed="changed"
               :content="list"
               :elements="elements"
               @error="error(section, $event)"
@@ -137,6 +139,7 @@ export default {
           ref="content"
           :item="item"
           :assets="assets"
+          :changed="changed"
           :content="item.content || []"
           :elements="elements"
           @error="error('main', $event)"

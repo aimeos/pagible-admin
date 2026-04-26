@@ -3,22 +3,22 @@
 <script>
 import gql from 'graphql-tag'
 import AsideMeta from '../components/AsideMeta.vue'
+import ChangesDialog from '../components/ChangesDialog.vue'
+import DetailAppBar from '../components/DetailAppBar.vue'
 import HistoryDialog from '../components/HistoryDialog.vue'
 import ElementDetailRefs from '../components/ElementDetailRefs.vue'
 import ElementDetailItem from '../components/ElementDetailItem.vue'
-import { useUserStore, useDrawerStore, useMessageStore, useViewStack } from '../stores'
+import { useDirtyStore, useUserStore, useMessageStore, useViewStack } from '../stores'
+import { applyResult, hasUnresolved } from '../merge'
+import { publishItem } from '../publish'
 import { write, translate } from '../ai'
-import {
-  mdiKeyboardBackspace,
-  mdiHistory,
-  mdiDatabaseArrowDown,
-  mdiChevronRight,
-  mdiChevronLeft
-} from '@mdi/js'
+import { subscribe } from '../echo'
 
 export default {
   components: {
     AsideMeta,
+    ChangesDialog,
+    DetailAppBar,
     HistoryDialog,
     ElementDetailRefs,
     ElementDetailItem
@@ -37,36 +37,37 @@ export default {
 
   data: () => ({
     assets: {},
-    changed: false,
+    changed: null,
+    dirty: false,
+    echoCleanup: null,
     error: false,
+    latestId: null,
     publishAt: null,
+    publishTime: null,
     publishing: false,
-    pubmenu: false,
     saving: false,
+    vchanged: false,
     vhistory: false,
     tab: 'element'
   }),
 
   setup() {
+    const dirtyStore = useDirtyStore()
     const viewStack = useViewStack()
     const messages = useMessageStore()
-    const drawer = useDrawerStore()
     const user = useUserStore()
 
     return {
+      dirtyStore,
       user,
-      drawer,
       messages,
-      viewStack,
-      mdiKeyboardBackspace,
-      mdiHistory,
-      mdiDatabaseArrowDown,
-      mdiChevronRight,
-      mdiChevronLeft
+      viewStack
     }
   },
 
   created() {
+    this.dirtyStore.register(() => this.save(true))
+
     if (!this.item?.id || !this.user.can('element:view')) {
       return
     }
@@ -118,6 +119,7 @@ export default {
         const element = result.data.element
 
         this.reset()
+        this.latestId = element.latest?.id
         this.assets = {}
 
         for (const entry of element.latest?.files || element.files || []) {
@@ -126,6 +128,15 @@ export default {
         }
 
         this.item.files = files
+
+        subscribe('element', this.item.id, (event) => {
+          if (!this.dirty && this.user.can('element:view') && event.editor !== this.user.me?.email) {
+            this.latestId = event.versionId
+            Object.assign(this.item, event.data)
+          }
+        }).then((cleanup) => {
+          this.echoCleanup = cleanup
+        })
       })
       .catch((error) => {
         this.messages.add(this.$gettext('Error fetching element') + ':\n' + error, 'error')
@@ -133,80 +144,55 @@ export default {
       })
   },
 
+  beforeUnmount() {
+    this.dirtyStore.unregister()
+    this.echoCleanup?.()
+  },
+
+  computed: {
+    hasConflict() {
+      return hasUnresolved(this.changed)
+    }
+  },
+
   methods: {
+    apply(changes) {
+      Object.assign(this.item, changes)
+      this.dirty = true
+      this.vhistory = false
+    },
+
     errorUpdated(event) {
       this.error = event
     },
 
     itemUpdated() {
       this.$emit('update:item', this.item)
-      this.changed = true
+      this.dirty = true
     },
 
     publish(at = null) {
-      if (!this.user.can('element:publish')) {
-        this.messages.add(this.$gettext('Permission denied'), 'error')
-        return
-      }
-
-      this.publishing = true
-
-      this.save(true).then((valid) => {
-        if (!valid) {
-          return
-        }
-
-        this.$apollo
-          .mutate({
-            mutation: gql`
-              mutation ($id: [ID!]!, $at: DateTime) {
-                pubElement(id: $id, at: $at) {
-                  id
-                }
-              }
-            `,
-            variables: {
-              id: [this.item.id],
-              at: at?.toISOString()?.substring(0, 19)?.replace('T', ' ')
-            }
-          })
-          .then((response) => {
-            if (response.errors) {
-              throw response.errors
-            }
-
-            if (!at) {
-              this.item.published = true
-              this.messages.add(this.$gettext('Element published successfully'), 'success')
-            } else {
-              this.item.publish_at = at
-              this.messages.add(
-                this.$gettext('Element scheduled for publishing at %{date}', {
-                  date: at.toLocaleDateString()
-                }),
-                'info'
-              )
-            }
-
-            this.viewStack.closeView()
-          })
-          .catch((error) => {
-            this.messages.add(this.$gettext('Error publishing element') + ':\n' + error, 'error')
-            this.$log(`ElementDetail::publish(): Error publishing element`, at, error)
-          })
-          .finally(() => {
-            this.publishing = false
-          })
-      })
+      publishItem(this, 'element', {
+        success: this.$gettext('Element published successfully'),
+        scheduled: (d) => this.$gettext('Element scheduled for publishing at %{date}', { date: d.toLocaleDateString() }),
+        error: this.$gettext('Error publishing element')
+      }, at)
     },
 
     published() {
-      this.publish(this.publishAt)
-      this.pubmenu = false
+      const at = new Date(this.publishAt)
+
+      if (this.publishTime) {
+        const [hours, minutes] = this.publishTime.split(':').map(Number)
+        at.setHours(hours, minutes, 0, 0)
+      }
+
+      this.publish(at)
     },
 
     reset() {
-      this.changed = false
+      this.dirty = false
+      this.changed = null
       this.error = false
     },
 
@@ -229,7 +215,7 @@ export default {
         return Promise.resolve(false)
       }
 
-      if (!this.changed) {
+      if (!this.dirty) {
         return Promise.resolve(true)
       }
 
@@ -242,9 +228,11 @@ export default {
       return this.$apollo
         .mutate({
           mutation: gql`
-            mutation ($id: ID!, $input: ElementInput!, $files: [ID!]) {
-              saveElement(id: $id, input: $input, files: $files) {
+            mutation ($id: ID!, $input: ElementInput!, $files: [ID!], $latestId: ID) {
+              saveElement(id: $id, input: $input, files: $files, latestId: $latestId) {
                 id
+                latest { id }
+                changed
               }
             }
           `,
@@ -258,7 +246,8 @@ export default {
             },
             files: this.item.files.filter((id, idx, self) => {
               return self.indexOf(id) === idx
-            })
+            }),
+            latestId: this.latestId
           }
         })
         .then((result) => {
@@ -266,12 +255,14 @@ export default {
             throw result.errors
           }
 
-          this.item.published = false
-          this.reset()
+          const el = result.data?.saveElement
+          const changed = el?.changed ? JSON.parse(el.changed) : null
 
-          if (!quiet) {
-            this.messages.add(this.$gettext('Element saved successfully'), 'success')
+          if (changed?.latest?.id || el?.latest?.id) {
+            this.latestId = changed?.latest?.id ?? el.latest.id
           }
+
+          applyResult(this, changed, this.$gettext('Element saved successfully'), quiet)
 
           return true
         })
@@ -311,7 +302,7 @@ export default {
     use(version) {
       Object.assign(this.item, version.data)
       this.vhistory = false
-      this.changed = true
+      this.dirty = true
     },
 
     translateText(texts, to, from = null) {
@@ -373,124 +364,42 @@ export default {
           this.$log(`ElementDetail::versions(): Error fetching element versions`, id, error)
         })
     }
+  },
+
+  watch: {
+    dirty(value) {
+      this.dirtyStore.set(value)
+    }
   }
 }
 </script>
 
 <template>
-  <v-app-bar :elevation="0" density="compact" role="sectionheader" :aria-label="$gettext('Menu')">
-    <template v-slot:prepend>
-      <v-btn
-        @click="viewStack.closeView()"
-        :title="$gettext('Back to list view')"
-        :icon="mdiKeyboardBackspace"
-      />
-    </template>
-
-    <v-app-bar-title>
-      <h1 class="app-title">{{ $gettext('Element') }}: {{ item.name }}</h1>
-    </v-app-bar-title>
-
-    <template v-slot:append>
-      <v-btn
-        @click="vhistory = true"
-        :class="{ hidden: item.published && !changed && !item.latest }"
-        :title="$gettext('View history')"
-        :icon="mdiHistory"
-        class="no-rtl"
-      />
-
-      <v-btn
-        @click="save()"
-        :loading="saving"
-        :title="$gettext('Save')"
-        :class="{ error: error }"
-        class="menu-save"
-        :disabled="!changed || error || !user.can('element:save')"
-        :variant="!changed || error || !user.can('element:save') ? 'plain' : 'flat'"
-        :color="!changed || error || !user.can('element:save') ? '' : 'blue-darken-1'"
-        :icon="mdiDatabaseArrowDown"
-      />
-
-      <v-menu v-model="pubmenu" :close-on-content-click="false">
-        <template #activator="{ props }">
-          <v-btn
-            v-bind="props"
-            icon
-            :loading="publishing"
-            :title="$gettext('Schedule publishing')"
-            :class="{ error: error }"
-            class="menu-publish"
-            :disabled="(item.published && !changed) || error || !user.can('element:publish')"
-            :variant="
-              (item.published && !changed) || error || !user.can('element:publish')
-                ? 'plain'
-                : 'flat'
-            "
-            :color="
-              (item.published && !changed) || error || !user.can('element:publish')
-                ? ''
-                : 'blue-darken-2'
-            "
-          >
-            <v-icon>
-              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-                <path d="M2,1V3H16V1H2 M2,10H6V19H12V10H16L9,3L2,10Z" />
-                <path
-                  d="M16.7 11.4C16.7 11.4 16.61 11.4 16.7 11.4C13.19 11.49 10.4 14.28 10.4 17.7C10.4 21.21 13.19 24 16.7 24S23 21.21 23 17.7 20.21 11.4 16.7 11.4M16.7 22.2C14.18 22.2 12.2 20.22 12.2 17.7S14.18 13.2 16.7 13.2 21.2 15.18 21.2 17.7 19.22 22.2 16.7 22.2M15.6 13.1V17.6L18.84 19.58L19.56 18.5L16.95 16.97V13.1H15.6Z"
-                />
-              </svg>
-            </v-icon>
-          </v-btn>
-        </template>
-        <div class="menu-content">
-          <v-date-picker v-model="publishAt" hide-header show-adjacent-months />
-          <v-btn
-            @click="published"
-            :disabled="!publishAt || error"
-            :color="publishAt ? 'primary' : ''"
-            variant="text"
-            >{{ $gettext('Publish') }}</v-btn
-          >
-        </div>
-      </v-menu>
-
-      <v-btn
-        icon
-        @click="publish()"
-        :loading="publishing"
-        :title="$gettext('Publish')"
-        :class="{ error: error }"
-        class="menu-publish"
-        :disabled="(item.published && !changed) || error || !user.can('element:publish')"
-        :variant="
-          (item.published && !changed) || error || !user.can('element:publish') ? 'plain' : 'flat'
-        "
-        :color="
-          (item.published && !changed) || error || !user.can('element:publish')
-            ? ''
-            : 'blue-darken-2'
-        "
-      >
-        <v-icon>
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-            <path d="M5,2V4H19V2H5 M5,12H9V21H15V12H19L12,5L5,12Z" />
-          </svg>
-        </v-icon>
-      </v-btn>
-
-      <v-btn
-        @click="drawer.toggle('aside')"
-        :title="$gettext('Toggle side menu')"
-        :icon="drawer.aside ? mdiChevronRight : mdiChevronLeft"
-      />
-    </template>
-  </v-app-bar>
+  <DetailAppBar
+    type="element"
+    :label="$gettext('Element')"
+    :name="item.name"
+    :dirty="dirty"
+    :error="error"
+    :conflict="hasConflict"
+    :changed="changed"
+    :published="item.published"
+    :has-latest="!!item.latest"
+    :saving="saving"
+    :publishing="publishing"
+    v-model:publish-at="publishAt"
+    v-model:publish-time="publishTime"
+    @save="save()"
+    @publish="publish()"
+    @schedule="published"
+    @history="vhistory = true"
+    @changes="vchanged = true"
+  />
 
   <v-main class="element-details" :aria-label="$gettext('Element')">
     <v-form @submit.prevent>
       <v-tabs fixed-tabs v-model="tab">
-        <v-tab value="element" :class="{ changed: changed, error: error }">{{
+        <v-tab value="element" :class="{ changed: dirty, error: error }">{{
           $gettext('Element')
         }}</v-tab>
         <v-tab value="refs">{{ $gettext('Used by') }}</v-tab>
@@ -530,13 +439,12 @@ export default {
       }"
       :load="() => versions(item.id)"
       @revert="revertVersion"
+      @apply="apply"
       @use="use($event)"
+    />
+    <ChangesDialog v-model="vchanged" :changed="changed"
+      :targets="{ data: item }"
+      @resolve="dirty = true"
     />
   </Teleport>
 </template>
-
-<style scoped>
-.v-toolbar-title {
-  margin-inline-start: 0;
-}
-</style>

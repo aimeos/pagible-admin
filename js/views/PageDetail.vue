@@ -4,39 +4,41 @@
 import gql from 'graphql-tag'
 import AsideMeta from '../components/AsideMeta.vue'
 import AsideCount from '../components/AsideCount.vue'
+import ChangesDialog from '../components/ChangesDialog.vue'
+import DetailAppBar from '../components/DetailAppBar.vue'
 import HistoryDialog from '../components/HistoryDialog.vue'
 import PageDetailItem from '../components/PageDetailItem.vue'
 import PageDetailEditor from '../components/PageDetailEditor.vue'
 import PageDetailContent from '../components/PageDetailContent.vue'
+import { applyResult, hasUnresolved } from '../merge'
+import { publishItem } from '../publish'
 import { defineAsyncComponent } from 'vue'
-
-const PageDetailMetrics = defineAsyncComponent(() => import('../components/PageDetailMetrics.vue'))
-
+import { write, translate } from '../ai'
+import { txlocales } from '../utils'
+import { subscribe } from '../echo'
 import {
   useAppStore,
+  useDirtyStore,
   useUserStore,
-  useDrawerStore,
-  useLanguageStore,
   useMessageStore,
   useSchemaStore,
   useViewStack
 } from '../stores'
 import {
-  mdiKeyboardBackspace,
   mdiTranslate,
-  mdiArrowRightThin,
-  mdiHistory,
-  mdiDatabaseArrowDown,
-  mdiChevronRight,
-  mdiChevronLeft
+  mdiArrowRightThin
 } from '@mdi/js'
-import { txlocales } from '../utils'
-import { write, translate } from '../ai'
+
+
+const PageDetailMetrics = defineAsyncComponent(() => import('../components/PageDetailMetrics.vue'))
+
 
 export default {
   components: {
     AsideMeta,
     AsideCount,
+    ChangesDialog,
+    DetailAppBar,
     HistoryDialog,
     PageDetailItem,
     PageDetailEditor,
@@ -57,29 +59,22 @@ export default {
   },
 
   setup() {
+    const dirtyStore = useDirtyStore()
     const viewStack = useViewStack()
-    const languages = useLanguageStore()
     const messages = useMessageStore()
     const schemas = useSchemaStore()
-    const drawer = useDrawerStore()
     const user = useUserStore()
     const app = useAppStore()
 
     return {
       app,
+      dirtyStore,
       user,
-      drawer,
       viewStack,
-      languages,
       messages,
       schemas,
-      mdiKeyboardBackspace,
       mdiTranslate,
       mdiArrowRightThin,
-      mdiHistory,
-      mdiDatabaseArrowDown,
-      mdiChevronRight,
-      mdiChevronLeft,
       txlocales,
       translate
     }
@@ -90,16 +85,19 @@ export default {
       tab: this.app.urlpage ? 'editor' : 'content',
       aside: '',
       asidePage: 'meta',
-      changed: {},
+      dirty: {},
       errors: {},
       assets: {},
       elements: {},
       latest: null,
-      pubmenu: null,
       publishAt: null,
+      publishTime: null,
       publishing: false,
       translating: false,
       vhistory: false,
+      changed: null,
+      vchanged: false,
+      echoCleanup: null,
       saving: false,
       savecnt: 0
     }
@@ -115,67 +113,30 @@ export default {
     },
 
     hasChanged() {
-      return Object.values(this.changed).some((entry) => entry)
+      return Object.values(this.dirty).some((entry) => entry)
+    },
+
+    hasConflict() {
+      return hasUnresolved(this.changed, ['data', 'content', 'meta', 'config'])
+    },
+
+    hasContentConflict() {
+      return hasUnresolved(this.changed, ['content', 'meta', 'config'])
+    },
+
+    hasPageConflict() {
+      return hasUnresolved(this.changed)
     },
 
     hasError() {
       return Object.values(this.errors).some((entry) => entry)
-    },
-
-    langs() {
-      const list = []
-      const supported = [
-        'ar',
-        'bg',
-        'cs',
-        'da',
-        'de',
-        'el',
-        'en',
-        'en-GB',
-        'en_US',
-        'es',
-        'et',
-        'fi',
-        'fr',
-        'he',
-        'hu',
-        'id',
-        'it',
-        'ja',
-        'ko',
-        'lt',
-        'lv',
-        'nb',
-        'nl',
-        'pl',
-        'pt',
-        'pt-BR',
-        'ro',
-        'ru',
-        'sk',
-        'sl',
-        'sv',
-        'th',
-        'tr',
-        'uk',
-        'vi',
-        'zh',
-        'zh-HANS',
-        'zh-HANT'
-      ]
-
-      Object.entries(this.languages.available).forEach((pair) => {
-        if (supported.includes(pair[0]) && pair[0] !== this.item.lang) {
-          list.push({ code: pair[0], name: pair[1] })
-        }
-      })
-
-      return list
     }
   },
 
   created() {
+    this.dirtyStore.register(() => this.save(true))
+    this.schemas.load()
+
     if (!this.item?.id || !this.user.can('page:view')) {
       return
     }
@@ -212,6 +173,19 @@ export default {
         this.assets = this.files(this.latest?.files || [])
         this.elements = this.elems(this.latest?.elements || [])
         this.item.content = this.obsolete(this.item.content)
+
+        subscribe('page', this.item.id, (event) => {
+          if (!this.hasChanged && this.user.can('page:view') && event.editor !== this.user.me?.email) {
+            this.latest = { ...this.latest, id: event.versionId }
+            Object.assign(this.item, event.data)
+
+            this.item.content = event.aux?.content ?? this.item.content
+            this.item.config = event.aux?.config ?? this.item.config
+            this.item.meta = event.aux?.meta ?? this.item.meta
+          }
+        }).then((cleanup) => {
+          this.echoCleanup = cleanup
+        })
       })
       .catch((error) => {
         this.messages.add(this.$gettext('Error fetching page') + ':\n' + error, 'error')
@@ -219,7 +193,19 @@ export default {
       })
   },
 
+  beforeUnmount() {
+    this.dirtyStore.unregister()
+    this.echoCleanup?.()
+  },
+
   methods: {
+    apply(changes) {
+      Object.assign(this.item, changes)
+      this.dirty.page = true
+      if(changes.content) this.dirty.content = true
+      this.vhistory = false
+    },
+
     clean(data, type) {
       if (data && type) {
         data = JSON.parse(JSON.stringify(data)) // deep copy
@@ -355,77 +341,34 @@ export default {
 
     pageUpdated(event) {
       Object.assign(this.item, event)
-      this.changed.page = true
+      this.dirty.page = true
     },
 
     publish(at = null) {
-      if (!this.user.can('page:publish')) {
-        this.messages.add(this.$gettext('Permission denied'), 'error')
-        return
-      }
-
-      this.publishing = true
-
-      this.save(true)
-        .then((valid) => {
-          if (!valid) {
-            return
-          }
-
-          this.$apollo
-            .mutate({
-              mutation: gql`
-                mutation ($id: [ID!]!, $at: DateTime) {
-                  pubPage(id: $id, at: $at) {
-                    id
-                  }
-                }
-              `,
-              variables: {
-                id: [this.item.id],
-                at: at?.toISOString()?.substring(0, 19)?.replace('T', ' ')
-              }
-            })
-            .then((response) => {
-              if (response.errors) {
-                throw response.errors
-              }
-
-              if (!at) {
-                this.item.published = true
-                this.messages.add(this.$gettext('Page published successfully'), 'success')
-              } else {
-                this.item.publish_at = at
-                this.messages.add(
-                  this.$gettext('Page scheduled for publishing at %{date}', {
-                    date: at.toLocaleDateString()
-                  }),
-                  'info'
-                )
-              }
-
-              this.viewStack.closeView()
-            })
-            .catch((error) => {
-              this.messages.add(this.$gettext('Error publishing page') + ':\n' + error, 'error')
-              this.$log(`PageDetail::publish(): Error publishing page`, at, error)
-            })
-        })
-        .finally(() => {
-          this.publishing = false
-        })
+      publishItem(this, 'page', {
+        success: this.$gettext('Page published successfully'),
+        scheduled: (d) => this.$gettext('Page scheduled for publishing at %{date}', { date: d.toLocaleDateString() }),
+        error: this.$gettext('Error publishing page')
+      }, at)
     },
 
     published() {
-      this.publish(this.publishAt)
-      this.pubmenu = false
+      const at = new Date(this.publishAt)
+
+      if (this.publishTime) {
+        const [hours, minutes] = this.publishTime.split(':').map(Number)
+        at.setHours(hours, minutes, 0, 0)
+      }
+
+      this.publish(at)
     },
 
     reset() {
       this.$refs.page?.reset()
       this.$refs.content?.reset()
 
-      this.changed = {}
+      this.dirty = {}
+      this.changed = null
       this.errors = {}
     },
 
@@ -475,9 +418,11 @@ export default {
       return this.$apollo
         .mutate({
           mutation: gql`
-            mutation ($id: ID!, $input: PageInput!, $elements: [ID!], $files: [ID!]) {
-              savePage(id: $id, input: $input, elements: $elements, files: $files) {
+            mutation ($id: ID!, $input: PageInput!, $elements: [ID!], $files: [ID!], $latestId: ID) {
+              savePage(id: $id, input: $input, elements: $elements, files: $files, latestId: $latestId) {
                 id
+                latest { id }
+                changed
               }
             }
           `,
@@ -501,7 +446,8 @@ export default {
               content: JSON.stringify(this.clean(this.item.content, 'content'))
             },
             elements: Object.keys(this.elements),
-            files: this.fileIds()
+            files: this.fileIds(),
+            latestId: this.latest?.id
           }
         })
         .then((response) => {
@@ -509,12 +455,21 @@ export default {
             throw response.errors
           }
 
-          this.item.published = false
-          this.$refs.history?.reset()
-          this.reset()
+          const page = response.data?.savePage
+          const changed = page?.changed ? JSON.parse(page.changed) : null
 
-          if (!quiet) {
-            this.messages.add(this.$gettext('Page saved successfully'), 'success')
+          if (changed?.latest?.id || page?.latest?.id) {
+            this.latest = { ...this.latest, id: changed?.latest?.id ?? page.latest.id }
+          }
+
+          this.$refs.history?.reset()
+          applyResult(this, changed, this.$gettext('Page saved successfully'), quiet)
+
+          if (changed) {
+            const aux = changed.latest?.aux
+            this.item.content = aux?.content ?? this.item.content
+            this.item.config = aux?.config ?? this.item.config
+            this.item.meta = aux?.meta ?? this.item.meta
           }
 
           this.invalidate()
@@ -594,8 +549,8 @@ export default {
             }
           })
 
-          this.changed['content'] = true
-          this.changed['page'] = true
+          this.dirty['content'] = true
+          this.dirty['page'] = true
 
           this.item.lang = lang
         })
@@ -615,7 +570,7 @@ export default {
         this[what] = value
       }
 
-      this.changed[what] = true
+      this.dirty[what] = true
     },
 
     use(version) {
@@ -625,8 +580,8 @@ export default {
       this.elements = this.elems(version.elements || [])
       this.item.content = this.obsolete(this.item.content)
 
-      this.changed['content'] = true
-      this.changed['page'] = true
+      this.dirty['content'] = true
+      this.dirty['page'] = true
 
       this.vhistory = false
     },
@@ -699,26 +654,37 @@ export default {
   watch: {
     asidePage(newAside) {
       this.aside = newAside
+    },
+
+    hasChanged(value) {
+      this.dirtyStore.set(value)
     }
   }
 }
 </script>
 
 <template>
-  <v-app-bar :elevation="0" density="compact" role="sectionheader" :aria-label="$gettext('Menu')">
-    <template v-slot:prepend>
-      <v-btn
-        @click="viewStack.closeView()"
-        :title="$gettext('Back to list view')"
-        :icon="mdiKeyboardBackspace"
-      />
-    </template>
-
-    <v-app-bar-title>
-      <h1 class="app-title">{{ $gettext('Page') }}: {{ item.name }}</h1>
-    </v-app-bar-title>
-
-    <template v-slot:append>
+  <DetailAppBar
+    type="page"
+    :label="$gettext('Page')"
+    :name="item.name"
+    :dirty="hasChanged"
+    :error="hasError"
+    :conflict="hasConflict"
+    :changed="changed"
+    :published="item.published"
+    :has-latest="!!latest"
+    :saving="saving"
+    :publishing="publishing"
+    v-model:publish-at="publishAt"
+    v-model:publish-time="publishTime"
+    @save="save()"
+    @publish="publish()"
+    @schedule="published"
+    @history="vhistory = true"
+    @changes="vchanged = true"
+  >
+    <template #actions>
       <v-menu v-if="user.can('text:translate')">
         <template #activator="{ props }">
           <v-btn
@@ -740,98 +706,8 @@ export default {
           </v-list-item>
         </v-list>
       </v-menu>
-
-      <v-btn
-        @click="vhistory = true"
-        :class="{ hidden: item.published && !hasChanged && !latest }"
-        :title="$gettext('View history')"
-        :icon="mdiHistory"
-        class="no-rtl"
-      ></v-btn>
-
-      <v-btn
-        @click="save()"
-        :loading="saving"
-        :title="$gettext('Save')"
-        :disabled="!hasChanged || hasError || !user.can('page:save')"
-        :variant="!hasChanged || hasError || !user.can('page:save') ? 'plain' : 'flat'"
-        :class="{ active: hasChanged && !hasError && user.can('page:save'), error: hasError }"
-        :icon="mdiDatabaseArrowDown"
-        class="menu-save"
-      />
-
-      <v-menu v-model="pubmenu" :close-on-content-click="false">
-        <template #activator="{ props }">
-          <v-btn
-            v-bind="props"
-            icon
-            :loading="publishing"
-            :title="$gettext('Schedule publishing')"
-            :disabled="(item.published && !hasChanged) || hasError || !user.can('page:publish')"
-            :variant="
-              (item.published && !hasChanged) || hasError || !user.can('page:publish')
-                ? 'plain'
-                : 'flat'
-            "
-            :class="{
-              active: (!item.published || hasChanged) && !hasError && user.can('page:publish'),
-              error: hasError
-            }"
-            class="menu-publishat"
-          >
-            <v-icon>
-              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-                <path d="M2,1V3H16V1H2 M2,10H6V19H12V10H16L9,3L2,10Z" />
-                <path
-                  d="M16.7 11.4C16.7 11.4 16.61 11.4 16.7 11.4C13.19 11.49 10.4 14.28 10.4 17.7C10.4 21.21 13.19 24 16.7 24S23 21.21 23 17.7 20.21 11.4 16.7 11.4M16.7 22.2C14.18 22.2 12.2 20.22 12.2 17.7S14.18 13.2 16.7 13.2 21.2 15.18 21.2 17.7 19.22 22.2 16.7 22.2M15.6 13.1V17.6L18.84 19.58L19.56 18.5L16.95 16.97V13.1H15.6Z"
-                />
-              </svg>
-            </v-icon>
-          </v-btn>
-        </template>
-        <div class="menu-content">
-          <v-date-picker v-model="publishAt" hide-header show-adjacent-months />
-          <v-btn
-            @click="published"
-            :disabled="!publishAt || hasError"
-            :color="publishAt ? 'primary' : ''"
-            variant="text"
-            >{{ $gettext('Publish') }}</v-btn
-          >
-        </div>
-      </v-menu>
-
-      <v-btn
-        icon
-        @click="publish()"
-        :loading="publishing"
-        :title="$gettext('Publish')"
-        :disabled="(item.published && !hasChanged) || hasError || !user.can('page:publish')"
-        :variant="
-          (item.published && !hasChanged) || hasError || !user.can('page:publish')
-            ? 'plain'
-            : 'flat'
-        "
-        :class="{
-          active: (!item.published || hasChanged) && !hasError && user.can('page:publish'),
-          error: hasError
-        }"
-        class="menu-publish"
-      >
-        <v-icon>
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-            <path d="M5,2V4H19V2H5 M5,12H9V21H15V12H19L12,5L5,12Z" />
-          </svg>
-        </v-icon>
-      </v-btn>
-
-      <v-btn
-        @click.stop="drawer.toggle('aside')"
-        :title="$gettext('Toggle side menu')"
-        :icon="drawer.aside ? mdiChevronRight : mdiChevronLeft"
-      />
     </template>
-  </v-app-bar>
+  </DetailAppBar>
 
   <v-main class="page-details" :aria-label="$gettext('Page')">
     <v-form @submit.prevent>
@@ -841,14 +717,14 @@ export default {
         </v-tab>
         <v-tab
           value="content"
-          :class="{ changed: changed.content, error: errors.content }"
+          :class="{ changed: dirty.content, error: errors.content, conflict: hasContentConflict }"
           @click="aside = 'count'"
         >
           {{ $gettext('Content') }}
         </v-tab>
         <v-tab
           value="page"
-          :class="{ changed: changed.page, error: errors.page }"
+          :class="{ changed: dirty.page, error: errors.page, conflict: hasPageConflict }"
           @click="aside = asidePage"
         >
           {{ $gettext('Page') }}
@@ -865,7 +741,7 @@ export default {
             :item="item"
             :assets="assets"
             :elements="elements"
-            @change="changed.content = true"
+            @change="dirty.content = true"
           />
         </v-window-item>
 
@@ -874,9 +750,10 @@ export default {
             ref="content"
             :item="item"
             :assets="assets"
+            :changed="changed?.content"
             :elements="elements"
             @error="errors.content = $event"
-            @change="changed.content = true"
+            @change="dirty.content = true"
           />
         </v-window-item>
 
@@ -930,28 +807,18 @@ export default {
       }"
       :load="() => versions(item.id)"
       @revert="revertVersion"
+      @apply="apply"
       @use="use($event)"
+    />
+    <ChangesDialog v-model="vchanged" :changed="changed"
+      :targets="{ data: item, meta: item.meta, config: item.config, content: item.content }"
+      @resolve="dirty.page = true"
     />
   </Teleport>
 </template>
 
 <style scoped>
-.v-toolbar-title {
-  margin-inline-start: 0;
-}
-
-.v-app-bar .v-btn.menu-save.active {
-  background-color: rgba(var(--v-theme-primary), 0.75);
-  color: rgb(var(--v-theme-on-primary));
-}
-
-.v-app-bar .v-btn.menu-publishat.active {
-  background-color: rgba(var(--v-theme-primary), 0.875);
-  color: rgb(var(--v-theme-on-primary));
-}
-
-.v-app-bar .v-btn.menu-publish.active {
-  background-color: rgba(var(--v-theme-primary), 1);
-  color: rgb(var(--v-theme-on-primary));
+.v-tab.conflict {
+  color: rgb(var(--v-theme-error));
 }
 </style>

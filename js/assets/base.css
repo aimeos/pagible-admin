@@ -242,6 +242,7 @@ input:-webkit-autofill:focus {
 }
 
 .v-btn.v-btn--density-default:not(.v-btn--stacked) {
+  min-width: 48px;
   height: 48px;
 }
 
@@ -264,6 +265,14 @@ input:-webkit-autofill:focus {
 
 .v-date-picker-controls__month, .v-date-picker-controls__year {
   align-items: center;
+}
+
+.v-time-picker-controls__time {
+  scale: 0.75;
+}
+
+.v-time-picker-clock {
+  margin: auto;
 }
 
 .header {
@@ -315,6 +324,15 @@ input:-webkit-autofill:focus {
 
 .menu-content > .v-btn {
   width: 100%;
+}
+
+.menu-publish-pickers {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.menu-publish-pickers > .v-time-picker {
+  flex: 0 0 auto;
 }
 
 .loading,
@@ -390,7 +408,7 @@ input:-webkit-autofill:focus {
 .publish-at,
 .item-status {
   margin-inline-end: 4px;
-  font-size: 1.25rem !important;
+  font-size: 125% !important;
 }
 
 .item-content {

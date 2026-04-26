@@ -32,6 +32,16 @@ export function debounce(func, delay) {
 }
 
 /**
+ * Checks if a value is empty (null, undefined, or empty object)
+ *
+ * @param {*} val Value to check
+ * @returns {boolean} True if the value is empty
+ */
+export function empty(val) {
+  return val == null || (typeof val === 'object' && Object.keys(val).length === 0)
+}
+
+/**
  * Returns available locales as a list for dropdown menus
  *
  * @param {boolean} none If true, prepends a "None" option with null value
@@ -51,6 +61,33 @@ export function locales(none = false) {
       title: languages.translate(code) + ' (' + code.toUpperCase() + ')'
     })
   })
+
+  return list
+}
+
+/**
+ * Returns filter dropdown items for language selection in list views
+ *
+ * @param {String} allIcon Icon for the "All" item
+ * @param {String} langIcon Icon for each language item
+ * @returns {Array} List of { title, icon, value } objects
+ */
+export function languageFilter(allIcon, langIcon) {
+  const list = [
+    {
+      title: gettext.$gettext('All'),
+      icon: allIcon,
+      value: { lang: null }
+    }
+  ]
+
+  for (const entry of locales()) {
+    list.push({
+      title: entry.title,
+      icon: langIcon,
+      value: { lang: entry.value }
+    })
+  }
 
   return list
 }
@@ -82,6 +119,17 @@ export function slugify(text) {
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
     .toLowerCase()
+}
+
+/**
+ * Formats a value as a displayable string
+ *
+ * @param {*} value Value to format
+ * @returns {string} Formatted string representation
+ */
+export function stringify(value) {
+  if (value == null) return ''
+  return typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)
 }
 
 /**
