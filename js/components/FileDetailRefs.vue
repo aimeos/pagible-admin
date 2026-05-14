@@ -3,31 +3,8 @@
 <script>
 import gql from 'graphql-tag'
 import { useUserStore, useViewStack } from '../stores'
-
-const FETCH_FILE_REFS = gql`
-  query ($id: ID!) {
-    file(id: $id) {
-      id
-      bypages {
-        id
-        path
-        name
-      }
-      byelements {
-        id
-        type
-        name
-      }
-      byversions {
-        id
-        versionable_id
-        versionable_type
-        published
-        publish_at
-      }
-    }
-  }
-`
+import PageDetail from '../views/PageDetail.vue'
+import ElementDetail from '../views/ElementDetail.vue'
 
 export default {
   props: {
@@ -48,32 +25,12 @@ export default {
     return { user, viewStack }
   },
 
-  beforeUnmount() {
-    this.versions = null
-    this.file = null
-  },
-
   methods: {
-    mapVersion(item) {
-      const type = item.versionable_type.slice(item.versionable_type.lastIndexOf('\\') + 1)
-      return {
-        id: item.versionable_id,
-        type,
-        published: item.published
-          ? this.$gettext('yes')
-          : item.publish_at
-            ? new Date(item.publish_at).toLocaleDateString()
-            : this.$gettext('no')
-      }
-    },
-
-    async openElement(item) {
-      const { default: ElementDetail } = await import('../views/ElementDetail.vue')
+    openElement(item) {
       this.viewStack.openView(ElementDetail, { item: { ...item } })
     },
 
-    async openPage(item) {
-      const { default: PageDetail } = await import('../views/PageDetail.vue')
+    openPage(item) {
       this.viewStack.openView(PageDetail, { item: { ...item } })
     }
   },
@@ -88,8 +45,30 @@ export default {
 
         this.$apollo
           .query({
-            query: FETCH_FILE_REFS,
-            fetchPolicy: 'no-cache',
+            query: gql`
+              query ($id: ID!) {
+                file(id: $id) {
+                  id
+                  bypages {
+                    id
+                    path
+                    name
+                  }
+                  byelements {
+                    id
+                    type
+                    name
+                  }
+                  byversions {
+                    id
+                    versionable_id
+                    versionable_type
+                    published
+                    publish_at
+                  }
+                }
+              }
+            `,
             variables: {
               id: item.id
             }
@@ -99,18 +78,22 @@ export default {
               throw result.errors
             }
 
-            const file = result.data?.file || {}
-            this.file = Object.freeze({
-              ...file,
-              bypages: Object.freeze((file.bypages || []).map(p => Object.freeze(p))),
-              byelements: Object.freeze((file.byelements || []).map(e => Object.freeze(e)))
-            })
-            this.versions = Object.freeze((result.data?.file?.byversions || [])
-              .map((item) => Object.freeze(this.mapVersion(item)))
+            this.file = result.data?.file || {}
+            this.versions = (result.data?.file?.byversions || [])
+              .map((item) => {
+                return {
+                  id: item.versionable_id,
+                  type: item.versionable_type.split('\\').at(-1),
+                  published: item.published
+                    ? this.$gettext('yes')
+                    : item.publish_at
+                      ? new Date(item.publish_at).toLocaleDateString()
+                      : this.$gettext('no')
+                }
+              })
               .filter((item) => {
                 return this.user.can(item.type.toLowerCase() + ':view')
               })
-            )
           })
           .catch((error) => {
             this.$log(`FileDetailRef::watch(item): Error fetching file`, item, error)

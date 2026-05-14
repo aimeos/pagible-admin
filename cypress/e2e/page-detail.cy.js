@@ -10,10 +10,6 @@
  * array (batched) or an object (single) and replies in the same shape.
  */
 
-Cypress.on('uncaught:exception', (err) => {
-  if (err.message.includes('ResizeObserver')) return false
-})
-
 const ALL_PERMISSIONS = {
   'page:view': true,
   'page:add': true,
@@ -240,7 +236,7 @@ describe('Page Detail', () => {
 
   it('back button closes the detail view', () => {
     visitPageDetail()
-    detailView().find('.v-btn.btn-back').click()
+    detailView().find('.v-btn[title="Back to list view"]').click()
     cy.get('.page-details').should('not.exist')
   })
 
@@ -261,17 +257,17 @@ describe('Page Detail', () => {
 
   it('shows schedule publish button', () => {
     visitPageDetail()
-    detailView().find('.menu-publish').should('exist')
+    detailView().find('.menu-publishat').should('exist')
   })
 
   it('shows history button', () => {
     visitPageDetail()
-    detailView().find('.v-btn.btn-history').should('exist')
+    detailView().find('.v-btn[title="View history"]').should('exist')
   })
 
   it('shows translate button when user has text:translate permission', () => {
     visitPageDetail()
-    detailView().find('.btn-translate-page .v-btn').should('exist')
+    detailView().find('.v-btn[title="Translate page"]').should('exist')
   })
 
   it('hides translate button when user lacks text:translate permission', () => {
@@ -285,12 +281,12 @@ describe('Page Detail', () => {
       name: 'Editor',
     }
     visitPageDetail({}, {}, me)
-    detailView().find('.btn-translate-page .v-btn').should('not.exist')
+    detailView().find('.v-btn[title="Translate page"]').should('not.exist')
   })
 
   it('shows aside toggle button', () => {
     visitPageDetail()
-    detailView().find('.v-btn.btn-sidemenu').should('exist')
+    detailView().find('.v-btn[title="Toggle side menu"]').should('exist')
   })
 
   // ---- Tabs ----
@@ -364,7 +360,7 @@ describe('Page Detail', () => {
 
   it('clicking publish fires pubPage mutation for unpublished page', () => {
     visitPageDetail({ latest: { ...makePage().latest, published: false } }, { published: false })
-    detailView().find('.menu-publish').last().click()
+    detailView().find('.menu-publish').click()
     // Wait for the pubPage mutation, skipping any intermediate queries
     function waitForPubPage() {
       return cy.wait('@gql').then((interception) => {
@@ -389,7 +385,7 @@ describe('Page Detail', () => {
 
   it('clicking history button opens history dialog', () => {
     visitPageDetail({}, { published: false })
-    detailView().find('.v-btn.btn-history').click()
+    detailView().find('.v-btn[title="View history"]').click()
     cy.get('.v-dialog').should('be.visible')
   })
 

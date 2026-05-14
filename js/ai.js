@@ -9,24 +9,6 @@ import { toMp3, transcription } from './audio'
 import { useUserStore, useMessageStore } from './stores'
 import { url } from './utils'
 
-const TRANSCRIBE = gql`
-  mutation ($file: Upload!) {
-    transcribe(file: $file)
-  }
-`
-
-const TRANSLATE = gql`
-  mutation ($texts: [String!]!, $to: String!, $from: String, $context: String) {
-    translate(texts: $texts, to: $to, from: $from, context: $context)
-  }
-`
-
-const WRITE_TEXT = gql`
-  mutation ($prompt: String!, $context: String, $files: [String!]) {
-    write(prompt: $prompt, context: $context, files: $files)
-  }
-`
-
 /**
  * Transcribes audio/video from a media URL to text via GraphQL
  *
@@ -48,7 +30,11 @@ export function transcribe(input) {
   return toMp3(url(input, true))
     .then((blob) => {
       return apolloClient.mutate({
-        mutation: TRANSCRIBE,
+        mutation: gql`
+          mutation ($file: Upload!) {
+            transcribe(file: $file)
+          }
+        `,
         variables: {
           file: new File([blob], 'audio.mp3', { type: 'audio/mpeg' })
         },
@@ -105,7 +91,11 @@ export function translate(texts, to, from = null, context = null) {
 
   return apolloClient
     .mutate({
-      mutation: TRANSLATE,
+      mutation: gql`
+        mutation ($texts: [String!]!, $to: String!, $from: String, $context: String) {
+          translate(texts: $texts, to: $to, from: $from, context: $context)
+        }
+      `,
       variables: {
         texts: texts,
         to: to.toUpperCase(),
@@ -161,7 +151,11 @@ export function write(prompt, context = [], files = []) {
 
   return apolloClient
     .mutate({
-      mutation: WRITE_TEXT,
+      mutation: gql`
+        mutation ($prompt: String!, $context: String, $files: [String!]) {
+          write(prompt: $prompt, context: $context, files: $files)
+        }
+      `,
       variables: {
         prompt: prompt,
         context: context.filter((v) => !!v).join('\n'),

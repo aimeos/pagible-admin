@@ -43,7 +43,6 @@ export default {
   data() {
     return {
       columns: this.header(),
-      lastError: null,
       table: this.modelValue,
       validated: null,
       updated: null,
@@ -135,11 +134,7 @@ export default {
     },
 
     validate(val) {
-      const hasError = !this.rules.every((rule) => rule(val) === true)
-      if (hasError !== this.lastError) {
-        this.lastError = hasError
-        this.$emit('error', hasError)
-      }
+      this.$emit('error', !this.rules.every((rule) => rule(val) === true))
     }
   },
 
@@ -185,37 +180,37 @@ export default {
               </svg>
             </v-btn>
 
-            <span class="btn-actions" v-if="!readonly">
-              <component
-                :is="$vuetify.display.xs ? 'v-dialog' : 'v-menu'"
-                :aria-label="$gettext('Column actions')"
-                v-model="menu['col-' + idx]"
-                transition="scale-transition"
-                location="start center"
-                max-width="300"
-              >
-                <template #activator="{ props }">
+            <component
+              :is="$vuetify.display.xs ? 'v-dialog' : 'v-menu'"
+              :aria-label="$gettext('Column actions')"
+              v-if="!readonly"
+              v-model="menu['col-' + idx]"
+              transition="scale-transition"
+              location="start center"
+              max-width="300"
+            >
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  :title="$gettext('Actions')"
+                  :icon="mdiDotsVertical"
+                  variant="text"
+                />
+              </template>
+
+              <v-card>
+                <v-toolbar density="compact">
+                  <v-toolbar-title>{{ $gettext('Actions') }}</v-toolbar-title>
                   <v-btn
-                    v-bind="props"
-                    :title="$gettext('Actions')"
-                    :icon="mdiDotsVertical"
-                    variant="text"
+                    :icon="mdiClose"
+                    :aria-label="$gettext('Close')"
+                    @click="menu['col-' + idx] = false"
                   />
-                </template>
+                </v-toolbar>
 
-                <v-card>
-                  <v-toolbar density="compact">
-                    <v-toolbar-title>{{ $gettext('Actions') }}</v-toolbar-title>
+                <v-list @click="menu['col-' + idx] = false">
+                  <v-list-item>
                     <v-btn
-                      :icon="mdiClose"
-                      :aria-label="$gettext('Close')"
-                      @click="menu['col-' + idx] = false"
-                    />
-                  </v-toolbar>
-
-                  <v-list @click="menu['col-' + idx] = false">
-                    <v-list-item>
-                      <v-btn
                       :prepend-icon="mdiTableColumnPlusBefore"
                       variant="text"
                       @click="addCol(idx)"
@@ -237,8 +232,7 @@ export default {
                   </v-list-item>
                 </v-list>
               </v-card>
-              </component>
-            </span>
+            </component>
           </td>
 
           <td></td>
@@ -280,60 +274,59 @@ export default {
           </td>
 
           <td>
-            <span class="btn-actions" v-if="!readonly">
-              <component
-                :is="$vuetify.display.xs ? 'v-dialog' : 'v-menu'"
-                :aria-label="$gettext('Row actions')"
-                v-model="menu['row-' + rowidx]"
-                transition="scale-transition"
-                location="start center"
-                max-width="300"
-              >
-                <template #activator="{ props }">
+            <component
+              :is="$vuetify.display.xs ? 'v-dialog' : 'v-menu'"
+              :aria-label="$gettext('Row actions')"
+              v-if="!readonly"
+              v-model="menu['row-' + rowidx]"
+              transition="scale-transition"
+              location="start center"
+              max-width="300"
+            >
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  :title="$gettext('Actions')"
+                  :icon="mdiDotsVertical"
+                  variant="text"
+                />
+              </template>
+
+              <v-card>
+                <v-toolbar density="compact">
+                  <v-toolbar-title>{{ $gettext('Actions') }}</v-toolbar-title>
                   <v-btn
-                    v-bind="props"
-                    :title="$gettext('Actions')"
-                    :icon="mdiDotsVertical"
-                    variant="text"
+                    :icon="mdiClose"
+                    :aria-label="$gettext('Close')"
+                    @click="menu['row-' + rowidx] = false"
                   />
-                </template>
+                </v-toolbar>
 
-                <v-card>
-                  <v-toolbar density="compact">
-                    <v-toolbar-title>{{ $gettext('Actions') }}</v-toolbar-title>
+                <v-list @click="menu['row-' + rowidx] = false">
+                  <v-list-item>
                     <v-btn
-                      :icon="mdiClose"
-                      :aria-label="$gettext('Close')"
-                      @click="menu['row-' + rowidx] = false"
-                    />
-                  </v-toolbar>
-
-                  <v-list @click="menu['row-' + rowidx] = false">
-                    <v-list-item>
-                      <v-btn
-                        :prepend-icon="mdiTableRowPlusBefore"
-                        variant="text"
-                        @click="addRow(rowidx)"
-                        >{{ $gettext('Insert before') }}</v-btn
-                      >
-                    </v-list-item>
-                    <v-list-item>
-                      <v-btn
-                        :prepend-icon="mdiTableRowPlusAfter"
-                        variant="text"
-                        @click="addRow(rowidx + 1)"
-                        >{{ $gettext('Insert after') }}</v-btn
-                      >
-                    </v-list-item>
-                    <v-list-item v-if="table.length > 1">
-                      <v-btn :prepend-icon="mdiDelete" variant="text" @click="rmRow(rowidx)">{{
-                        $gettext('Delete')
-                      }}</v-btn>
-                    </v-list-item>
-                  </v-list>
-                </v-card>
-              </component>
-            </span>
+                      :prepend-icon="mdiTableRowPlusBefore"
+                      variant="text"
+                      @click="addRow(rowidx)"
+                      >{{ $gettext('Insert before') }}</v-btn
+                    >
+                  </v-list-item>
+                  <v-list-item>
+                    <v-btn
+                      :prepend-icon="mdiTableRowPlusAfter"
+                      variant="text"
+                      @click="addRow(rowidx + 1)"
+                      >{{ $gettext('Insert after') }}</v-btn
+                    >
+                  </v-list-item>
+                  <v-list-item v-if="table.length > 1">
+                    <v-btn :prepend-icon="mdiDelete" variant="text" @click="rmRow(rowidx)">{{
+                      $gettext('Delete')
+                    }}</v-btn>
+                  </v-list-item>
+                </v-list>
+              </v-card>
+            </component>
           </td>
         </tr>
       </tbody>

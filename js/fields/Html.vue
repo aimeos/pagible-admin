@@ -12,8 +12,6 @@ export default {
 
   emits: ['update:modelValue', 'error'],
 
-  data: () => ({ lastError: null }),
-
   computed: {
     rules() {
       return [(v) => !!v || this.$gettext(`Value is required`)]
@@ -24,11 +22,12 @@ export default {
     modelValue: {
       immediate: true,
       handler(val) {
-        const hasError = !this.rules.every((rule) => rule(val ?? this.config.default ?? '') === true)
-        if (hasError !== this.lastError) {
-          this.lastError = hasError
-          this.$emit('error', hasError)
-        }
+        this.$emit(
+          'error',
+          !this.rules.every((rule) => {
+            return rule(val ?? this.config.default ?? '') === true
+          })
+        )
       }
     }
   }

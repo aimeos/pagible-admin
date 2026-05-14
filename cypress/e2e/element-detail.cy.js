@@ -181,7 +181,7 @@ describe('Element Detail', () => {
 
   it('back button closes the detail view', () => {
     visitElementDetail()
-    detailView().find('.v-btn.btn-back').click()
+    detailView().find('.v-btn[title="Back to list view"]').click()
     cy.get('.element-details').should('not.exist')
   })
 
@@ -263,12 +263,12 @@ describe('Element Detail', () => {
 
   it('shows history button', () => {
     visitElementDetail()
-    detailView().find('.v-btn.btn-history').should('exist')
+    detailView().find('.v-btn[title="View history"]').should('exist')
   })
 
   it('clicking history button opens history dialog', () => {
     visitElementDetail({}, { latest: { ...makeElementDetail().latest, published: false } })
-    detailView().find('.v-btn.btn-history').click()
+    detailView().find('.v-btn[title="View history"]').click()
     cy.get('.v-dialog').should('be.visible')
   })
 

@@ -1,7 +1,6 @@
 /** @license LGPL, https://opensource.org/license/lgpl-3-0 */
 
 <script>
-import { markRaw } from 'vue'
 import gql from 'graphql-tag'
 import {
   mdiDotsVertical,
@@ -20,105 +19,7 @@ import {
   mdiRefresh
 } from '@mdi/js'
 import { useAppStore, useUserStore, useMessageStore } from '../stores'
-import { debounce, frozenParse, url, srcset } from '../utils'
-
-const ADD_FILE = gql`
-  mutation ($file: Upload!) {
-    addFile(file: $file) {
-      id
-      lang
-      mime
-      name
-      path
-      previews
-      description
-      transcription
-      editor
-      created_at
-      updated_at
-      deleted_at
-    }
-  }
-`
-
-const DROP_FILE = gql`
-  mutation ($id: [ID!]!) {
-    dropFile(id: $id) {
-      id
-    }
-  }
-`
-
-const KEEP_FILE = gql`
-  mutation ($id: [ID!]!) {
-    keepFile(id: $id) {
-      id
-    }
-  }
-`
-
-const PUB_FILE = gql`
-  mutation ($id: [ID!]!) {
-    pubFile(id: $id) {
-      id
-    }
-  }
-`
-
-const PURGE_FILE = gql`
-  mutation ($id: [ID!]!) {
-    purgeFile(id: $id) {
-      id
-    }
-  }
-`
-
-const FETCH_FILES = gql`
-  query (
-    $filter: FileFilter
-    $sort: [QueryFilesSortOrderByClause!]
-    $limit: Int!
-    $page: Int!
-    $trashed: Trashed
-    $publish: Publish
-  ) {
-    files(
-      filter: $filter
-      sort: $sort
-      first: $limit
-      page: $page
-      trashed: $trashed
-      publish: $publish
-    ) {
-      data {
-        id
-        lang
-        name
-        mime
-        path
-        previews
-        description
-        transcription
-        editor
-        created_at
-        updated_at
-        deleted_at
-        latest {
-          id
-          published
-          publish_at
-          data
-          editor
-          created_at
-        }
-        byversions_count
-      }
-      paginatorInfo {
-        lastPage
-      }
-    }
-  }
-`
+import { debounce, url, srcset } from '../utils'
 
 export default {
   props: {
@@ -133,13 +34,13 @@ export default {
     return {
       items: [],
       menu: [],
-      checked: new Set(),
       term: '',
       sort: this.user.getData('file', 'sort') || { column: 'ID', order: 'DESC' },
       page: 1,
       last: 1,
       limit: 100,
       actions: false,
+      checked: false,
       loading: true,
       vgrid: false
     }
@@ -180,23 +81,17 @@ export default {
     this.search()
   },
 
-  beforeUnmount() {
-    this.items = null
-    this.menu = null
-    this.checked = null
-  },
-
   computed: {
     canTrash() {
-      return this.items.some((item) => this.checked.has(item.id) && !item.deleted_at)
+      return this.items.some((item) => item._checked && !item.deleted_at)
     },
 
     isChecked() {
-      return this.checked.size > 0
+      return this.items.some((item) => item._checked)
     },
 
     isTrashed() {
-      return this.items.some((item) => this.checked.has(item.id) && item.deleted_at)
+      return this.items.some((item) => item._checked && item.deleted_at)
     },
 
     order() {
@@ -230,11 +125,28 @@ export default {
         return
       }
 
-      for (const file of files) {
+      Array.from(files).forEach((file) => {
         promises.push(
           this.$apollo
             .mutate({
-              mutation: ADD_FILE,
+              mutation: gql`
+                mutation ($file: Upload!) {
+                  addFile(file: $file) {
+                    id
+                    lang
+                    mime
+                    name
+                    path
+                    previews
+                    description
+                    transcription
+                    editor
+                    created_at
+                    updated_at
+                    deleted_at
+                  }
+                }
+              `,
               variables: {
                 file: file
               },
@@ -249,9 +161,9 @@ export default {
 
               const data = {
                 ...(response.data?.addFile || {}),
-                previews: frozenParse(response.data?.addFile?.previews),
-                description: frozenParse(response.data?.addFile?.description),
-                transcription: frozenParse(response.data?.addFile?.transcription),
+                previews: JSON.parse(response.data?.addFile?.previews) || {},
+                description: JSON.parse(response.data?.addFile?.description) || {},
+                transcription: JSON.parse(response.data?.addFile?.transcription) || {},
                 published: true
               }
 
@@ -268,10 +180,10 @@ export default {
                 this.$gettext(`Error adding file %{path}`, { path: file.name }) + ':\n' + error,
                 'error'
               )
-              this.$log(`FileListItems::add(): Error adding file`, file, error)
+              this.$log(`FileListItems::add(): Error adding file`, ev, error)
             })
         )
-      }
+      })
 
       return Promise.all(promises).then(() => {
         this.invalidate()
@@ -284,7 +196,7 @@ export default {
         return
       }
 
-      const list = item ? [item] : this.items.filter((item) => this.checked.has(item.id))
+      const list = item ? [item] : this.items.filter((item) => item._checked)
 
       if (!list.length) {
         return
@@ -292,7 +204,13 @@ export default {
 
       this.$apollo
         .mutate({
-          mutation: DROP_FILE,
+          mutation: gql`
+            mutation ($id: [ID!]!) {
+              dropFile(id: $id) {
+                id
+              }
+            }
+          `,
           variables: {
             id: list.map((item) => item.id)
           }
@@ -321,6 +239,13 @@ export default {
     invalidate() {
       const cache = this.$apollo.provider.defaultClient.cache
       cache.evict({ id: 'ROOT_QUERY', fieldName: 'files' })
+
+      Object.keys(cache.extract()).forEach(key => {
+        if(key.startsWith('File:')) {
+          cache.evict({ id: key })
+        }
+      })
+
       cache.gc()
     },
 
@@ -330,7 +255,7 @@ export default {
         return
       }
 
-      const list = item ? [item] : this.items.filter((item) => this.checked.has(item.id))
+      const list = item ? [item] : this.items.filter((item) => item._checked)
 
       if (!list.length) {
         return
@@ -338,7 +263,13 @@ export default {
 
       this.$apollo
         .mutate({
-          mutation: KEEP_FILE,
+          mutation: gql`
+            mutation ($id: [ID!]!) {
+              keepFile(id: $id) {
+                id
+              }
+            }
+          `,
           variables: {
             id: list.map((item) => item.id)
           }
@@ -347,6 +278,10 @@ export default {
           if (result.errors) {
             throw result.errors
           }
+
+          list.forEach((item) => {
+            item.deleted_at = null
+          })
 
           this.invalidate()
           this.search()
@@ -366,7 +301,7 @@ export default {
       const list = item
         ? [item]
         : this.items.filter((item) => {
-            return this.checked.has(item.id) && item.id && !item.published
+            return item._checked && item.id && !item.published
           })
 
       if (!list.length) {
@@ -375,7 +310,13 @@ export default {
 
       this.$apollo
         .mutate({
-          mutation: PUB_FILE,
+          mutation: gql`
+            mutation ($id: [ID!]!) {
+              pubFile(id: $id) {
+                id
+              }
+            }
+          `,
           variables: {
             id: list.map((item) => item.id)
           }
@@ -384,6 +325,11 @@ export default {
           if (result.errors) {
             throw result.errors
           }
+
+          list.forEach((item) => {
+            item.published = true
+            item._checked = false
+          })
 
           this.invalidate()
           this.search()
@@ -400,7 +346,7 @@ export default {
         return
       }
 
-      const list = item ? [item] : this.items.filter((item) => this.checked.has(item.id))
+      const list = item ? [item] : this.items.filter((item) => item._checked)
 
       if (!list.length) {
         return
@@ -408,7 +354,13 @@ export default {
 
       this.$apollo
         .mutate({
-          mutation: PURGE_FILE,
+          mutation: gql`
+            mutation ($id: [ID!]!) {
+              purgeFile(id: $id) {
+                id
+              }
+            }
+          `,
           variables: {
             id: list.map((item) => item.id)
           }
@@ -425,10 +377,6 @@ export default {
           this.messages.add(this.$gettext('Error purging file') + ':\n' + error, 'error')
           this.$log(`FileListItems::purge(): Error purging file`, item, error)
         })
-    },
-
-    setSort(column, order) {
-      this.sort = { column, order }
     },
 
     search() {
@@ -458,8 +406,52 @@ export default {
 
       return this.$apollo
         .query({
-          query: FETCH_FILES,
-          fetchPolicy: 'no-cache',
+          query: gql`
+            query (
+              $filter: FileFilter
+              $sort: [QueryFilesSortOrderByClause!]
+              $limit: Int!
+              $page: Int!
+              $trashed: Trashed
+              $publish: Publish
+            ) {
+              files(
+                filter: $filter
+                sort: $sort
+                first: $limit
+                page: $page
+                trashed: $trashed
+                publish: $publish
+              ) {
+                data {
+                  id
+                  lang
+                  name
+                  mime
+                  path
+                  previews
+                  description
+                  transcription
+                  editor
+                  created_at
+                  updated_at
+                  deleted_at
+                  latest {
+                    id
+                    published
+                    publish_at
+                    data
+                    editor
+                    created_at
+                  }
+                  byversions_count
+                }
+                paginatorInfo {
+                  lastPage
+                }
+              }
+            }
+          `,
           variables: {
             filter: filter,
             page: this.page,
@@ -475,15 +467,20 @@ export default {
           }
 
           const files = result.data.files || {}
+          const keys = ['previews', 'description', 'transcription']
+
           this.last = files.paginatorInfo?.lastPage || 1
           this.items = [...(files.data || [])].map((entry) => {
             const item = entry.latest?.data
               ? JSON.parse(entry.latest?.data)
-              : { ...entry, previews: JSON.parse(entry.previews || '{}') }
+              : {
+                  ...entry,
+                  previews: JSON.parse(entry.previews || '{}'),
+                  description: JSON.parse(entry.description || '{}'),
+                  transcription: JSON.parse(entry.transcription || '{}')
+                }
 
-            delete item.description
-            delete item.transcription
-            item.previews = markRaw(item.previews ?? {})
+            keys.forEach((key) => (item[key] ??= {}))
 
             return Object.assign(item, {
               id: entry.id,
@@ -493,11 +490,11 @@ export default {
               editor: entry.latest?.editor || entry.editor,
               published: entry.latest?.published ?? true,
               publish_at: entry.latest?.publish_at || null,
-              latestId: entry.latest?.id || null,
+              latest: entry.latest,
               usage: entry.byversions_count
             })
           })
-          this.checked = new Set()
+          this.checked = false
           this.loading = false
 
           return this.items
@@ -519,21 +516,9 @@ export default {
     },
 
     toggle() {
-      if (this.checked.size > 0) {
-        this.checked = new Set()
-      } else {
-        this.checked = new Set(this.items.map((item) => item.id))
-      }
-    },
-
-    toggleCheck(item) {
-      const next = new Set(this.checked)
-      if (next.has(item.id)) {
-        next.delete(item.id)
-      } else {
-        next.add(item.id)
-      }
-      this.checked = next
+      this.items.forEach((el) => {
+        el._checked = !el._checked
+      })
     }
   },
 
@@ -571,57 +556,55 @@ export default {
 <template>
   <div class="header">
     <div class="bulk">
-      <v-checkbox-btn :model-value="checked.size > 0" @click.stop="toggle()" :aria-label="$gettext('Toggle selection')" />
+      <v-checkbox-btn v-model="checked" @click.stop="toggle()" :aria-label="$gettext('Toggle selection')" />
 
-      <span class="btn-actions">
-        <component
-          :is="$vuetify.display.xs ? 'v-dialog' : 'v-menu'"
-          :aria-label="$gettext('Actions')"
-          v-model="actions"
-          transition="scale-transition"
-          location="end center"
-          max-width="300"
-        >
-          <template v-slot:activator="{ props }">
-            <v-btn
-              v-bind="props"
-              :disabled="!isChecked || embed || !user.can('file:add')"
-              :title="$gettext('Actions')"
-              :icon="mdiDotsVertical"
-              variant="text"
-            />
-          </template>
-          <v-card>
-            <v-toolbar density="compact">
-              <v-toolbar-title>{{ $gettext('Actions') }}</v-toolbar-title>
-              <v-btn :icon="mdiClose" :aria-label="$gettext('Close')" @click="actions = false" />
-            </v-toolbar>
+      <component
+        :is="$vuetify.display.xs ? 'v-dialog' : 'v-menu'"
+        :aria-label="$gettext('Actions')"
+        v-model="actions"
+        transition="scale-transition"
+        location="end center"
+        max-width="300"
+      >
+        <template v-slot:activator="{ props }">
+          <v-btn
+            v-bind="props"
+            :disabled="!isChecked || embed || !user.can('file:add')"
+            :title="$gettext('Actions')"
+            :icon="mdiDotsVertical"
+            variant="text"
+          />
+        </template>
+        <v-card>
+          <v-toolbar density="compact">
+            <v-toolbar-title>{{ $gettext('Actions') }}</v-toolbar-title>
+            <v-btn :icon="mdiClose" :aria-label="$gettext('Close')" @click="actions = false" />
+          </v-toolbar>
 
-            <v-list @click="actions = false">
-              <v-list-item v-if="isChecked && user.can('file:publish')">
-                <v-btn :prepend-icon="mdiPublish" variant="text" @click="publish()">{{
-                  $gettext('Publish')
-                }}</v-btn>
-              </v-list-item>
-              <v-list-item v-if="canTrash && user.can('file:drop')">
-                <v-btn :prepend-icon="mdiDelete" variant="text" @click="drop()">{{
-                  $gettext('Delete')
-                }}</v-btn>
-              </v-list-item>
-              <v-list-item v-if="isTrashed && user.can('file:keep')">
-                <v-btn :prepend-icon="mdiDeleteRestore" variant="text" @click="keep()">{{
-                  $gettext('Restore')
-                }}</v-btn>
-              </v-list-item>
-              <v-list-item v-if="isChecked && user.can('file:purge')">
-                <v-btn :prepend-icon="mdiDeleteForever" variant="text" @click="purge()">{{
-                  $gettext('Purge')
-                }}</v-btn>
-              </v-list-item>
-            </v-list>
-          </v-card>
-        </component>
-      </span>
+          <v-list @click="actions = false">
+            <v-list-item v-if="isChecked && user.can('file:publish')">
+              <v-btn :prepend-icon="mdiPublish" variant="text" @click="publish()">{{
+                $gettext('Publish')
+              }}</v-btn>
+            </v-list-item>
+            <v-list-item v-if="canTrash && user.can('file:drop')">
+              <v-btn :prepend-icon="mdiDelete" variant="text" @click="drop()">{{
+                $gettext('Delete')
+              }}</v-btn>
+            </v-list-item>
+            <v-list-item v-if="isTrashed && user.can('file:keep')">
+              <v-btn :prepend-icon="mdiDeleteRestore" variant="text" @click="keep()">{{
+                $gettext('Restore')
+              }}</v-btn>
+            </v-list-item>
+            <v-list-item v-if="isChecked && user.can('file:purge')">
+              <v-btn :prepend-icon="mdiDeleteForever" variant="text" @click="purge()">{{
+                $gettext('Purge')
+              }}</v-btn>
+            </v-list-item>
+          </v-list>
+        </v-card>
+      </component>
 
       <div v-if="!this.embed && user.can('file:add')">
         <input @change="add($event)" ref="upload" type="file" multiple hidden />
@@ -630,7 +613,6 @@ export default {
           :title="$gettext('Add files')"
           :disabled="loading"
           :icon="mdiPlus"
-          class="btn-add"
           color="primary"
           variant="tonal"
         />
@@ -653,7 +635,6 @@ export default {
         @click="reload()"
         :title="$gettext('Reload files')"
         :icon="mdiRefresh"
-        class="btn-reload"
         variant="text"
       />
 
@@ -662,7 +643,6 @@ export default {
         @click="vgrid = true"
         :title="$gettext('Grid view')"
         :icon="mdiViewGridOutline"
-        class="btn-grid"
         variant="text"
       />
       <v-btn
@@ -670,69 +650,65 @@ export default {
         @click="vgrid = false"
         :title="$gettext('List view')"
         :icon="mdiFormatListBulletedSquare"
-        class="btn-list"
         variant="text"
       />
 
-      <span class="btn-sort">
-        <v-menu>
-          <template #activator="{ props }">
-            <v-btn
-              v-bind="props"
-              :title="$gettext('Sort by')"
-              :append-icon="mdiMenuDown"
-              :prepend-icon="mdiSort"
-              variant="text"
-              >{{ order }}</v-btn
-            >
-          </template>
-          <v-list>
-            <v-list-item>
-              <v-btn variant="text" @click="setSort('ID', 'DESC')">{{
-                $gettext('latest')
-              }}</v-btn>
-            </v-list-item>
-            <v-list-item>
-              <v-btn variant="text" @click="setSort('ID', 'ASC')">{{
-                $gettext('oldest')
-              }}</v-btn>
-            </v-list-item>
-            <v-list-item>
-              <v-btn variant="text" @click="setSort('NAME', 'ASC')">{{
-                $gettext('name')
-              }}</v-btn>
-            </v-list-item>
-            <v-list-item>
-              <v-btn variant="text" @click="setSort('MIME', 'ASC')">{{
-                $gettext('mime')
-              }}</v-btn>
-            </v-list-item>
-            <v-list-item>
-              <v-btn variant="text" @click="setSort('LANG', 'ASC')">{{
-                $gettext('language')
-              }}</v-btn>
-            </v-list-item>
-            <v-list-item>
-              <v-btn variant="text" @click="setSort('EDITOR', 'ASC')">{{
-                $gettext('editor')
-              }}</v-btn>
-            </v-list-item>
-            <v-list-item>
-              <v-btn variant="text" @click="setSort('BYVERSIONS_COUNT', 'ASC')">{{
-                $gettext('usage')
-              }}</v-btn>
-            </v-list-item>
-          </v-list>
-        </v-menu>
-      </span>
+      <v-menu>
+        <template #activator="{ props }">
+          <v-btn
+            v-bind="props"
+            :title="$gettext('Sort by')"
+            :append-icon="mdiMenuDown"
+            :prepend-icon="mdiSort"
+            variant="text"
+            >{{ order }}</v-btn
+          >
+        </template>
+        <v-list>
+          <v-list-item>
+            <v-btn variant="text" @click="sort = { column: 'ID', order: 'DESC' }">{{
+              $gettext('latest')
+            }}</v-btn>
+          </v-list-item>
+          <v-list-item>
+            <v-btn variant="text" @click="sort = { column: 'ID', order: 'ASC' }">{{
+              $gettext('oldest')
+            }}</v-btn>
+          </v-list-item>
+          <v-list-item>
+            <v-btn variant="text" @click="sort = { column: 'NAME', order: 'ASC' }">{{
+              $gettext('name')
+            }}</v-btn>
+          </v-list-item>
+          <v-list-item>
+            <v-btn variant="text" @click="sort = { column: 'MIME', order: 'ASC' }">{{
+              $gettext('mime')
+            }}</v-btn>
+          </v-list-item>
+          <v-list-item>
+            <v-btn variant="text" @click="sort = { column: 'LANG', order: 'ASC' }">{{
+              $gettext('language')
+            }}</v-btn>
+          </v-list-item>
+          <v-list-item>
+            <v-btn variant="text" @click="sort = { column: 'EDITOR', order: 'ASC' }">{{
+              $gettext('editor')
+            }}</v-btn>
+          </v-list-item>
+          <v-list-item>
+            <v-btn variant="text" @click="sort = { column: 'BYVERSIONS_COUNT', order: 'ASC' }">{{
+              $gettext('usage')
+            }}</v-btn>
+          </v-list-item>
+        </v-list>
+      </v-menu>
     </div>
   </div>
 
   <v-list class="items" :class="{ grid: vgrid, list: !vgrid }">
     <v-list-item v-for="(item, idx) in items" :key="idx">
       <v-checkbox-btn
-        :model-value="checked.has(item.id)"
-        @update:model-value="toggleCheck(item)"
+        v-model="item._checked"
         :class="{ draft: !item.published }"
         class="item-check"
       />
@@ -750,7 +726,7 @@ export default {
             v-bind="props"
             :title="$gettext('Actions')"
             :icon="mdiDotsVertical"
-            class="btn-actions item-menu"
+            class="item-menu"
             variant="text"
           />
         </template>
@@ -906,7 +882,6 @@ export default {
       :title="$gettext('Add files')"
       :disabled="loading"
       :icon="mdiPlus"
-      class="btn-add"
       color="primary"
       variant="tonal"
     />
@@ -942,8 +917,6 @@ a.item-usage {
 
 .items.list .v-list-item {
   border-bottom: 1px solid rgba(var(--v-border-color), 0.38);
-  content-visibility: auto;
-  contain-intrinsic-size: auto 56px;
   padding: 4px 0;
 }
 
@@ -999,8 +972,6 @@ a.item-usage {
 .items.grid .v-list-item {
   grid-template-rows: max-content;
   border: 1px solid rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
-  content-visibility: auto;
-  contain-intrinsic-size: auto 260px;
 }
 
 .items.grid .v-list-item .item-check,

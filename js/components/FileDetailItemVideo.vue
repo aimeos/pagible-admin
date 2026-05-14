@@ -6,30 +6,6 @@ import { useUserStore, useMessageStore } from '../stores'
 import { url } from '../utils'
 import { mdiTooltipImage, mdiImagePlus } from '@mdi/js'
 
-const SAVE_FILE_PREVIEW = gql`
-  mutation ($id: ID!, $preview: Upload) {
-    saveFile(id: $id, input: {}, preview: $preview) {
-      id
-      latest {
-        data
-        created_at
-      }
-    }
-  }
-`
-
-const REMOVE_FILE_PREVIEW = gql`
-  mutation ($id: ID!, $preview: Boolean) {
-    saveFile(id: $id, input: {}, preview: $preview) {
-      id
-      latest {
-        data
-        created_at
-      }
-    }
-  }
-`
-
 export default {
   props: {
     item: { type: Object, required: true },
@@ -51,22 +27,13 @@ export default {
     return { user, messages, url, mdiTooltipImage, mdiImagePlus }
   },
 
-  beforeUnmount() {
-    const video = this.$refs.video
-    if (video) {
-      video.pause()
-      video.removeAttribute('src')
-      video.load()
-    }
-    this.loading = {}
-  },
-
   methods: {
     addCover() {
       if (this.readonly) {
         return this.messages.add(this.$gettext('Permission denied'), 'error')
       }
 
+      const self = this
       const video = this.$refs.video
 
       if (!video) {
@@ -85,19 +52,26 @@ export default {
       context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight)
 
       canvas.toBlob(
-        (blob) => {
-          canvas.width = 0
-          canvas.height = 0
-
+        function (blob) {
           const file = new File([blob], filename, { type: 'image/png' })
 
-          this.loading.cover = true
+          self.loading.cover = true
 
-          this.$apollo
+          self.$apollo
             .mutate({
-              mutation: SAVE_FILE_PREVIEW,
+              mutation: gql`
+                mutation ($id: ID!, $preview: Upload) {
+                  saveFile(id: $id, input: {}, preview: $preview) {
+                    id
+                    latest {
+                      data
+                      created_at
+                    }
+                  }
+                }
+              `,
               variables: {
-                id: this.item.id,
+                id: self.item.id,
                 preview: file
               },
               context: {
@@ -112,16 +86,16 @@ export default {
               const latest = response.data?.saveFile?.latest
 
               if (latest) {
-                this.item.previews = JSON.parse(latest.data || '{}')?.previews || {}
-                this.item.updated_at = latest.created_at
+                self.item.previews = JSON.parse(latest.data || '{}')?.previews || {}
+                self.item.updated_at = latest.created_at
               }
             })
             .catch((error) => {
-              this.messages.add(this.$gettext('Error saving video cover') + ':\n' + error, 'error')
-              this.$log(`FileDetailItemVideo::addCover(): Error saving video cover`, error)
+              self.messages.add(self.$gettext('Error saving video cover') + ':\n' + error, 'error')
+              self.$log(`FileDetailItemVideo::addCover(): Error saving video cover`, error)
             })
             .finally(() => {
-              this.loading.cover = false
+              self.loading.cover = false
             })
         },
         'image/png',
@@ -139,7 +113,17 @@ export default {
 
       this.$apollo
         .mutate({
-          mutation: REMOVE_FILE_PREVIEW,
+          mutation: gql`
+            mutation ($id: ID!, $preview: Boolean) {
+              saveFile(id: $id, input: {}, preview: $preview) {
+                id
+                latest {
+                  data
+                  created_at
+                }
+              }
+            }
+          `,
           variables: {
             id: this.item.id,
             preview: false
@@ -181,7 +165,17 @@ export default {
 
       this.$apollo
         .mutate({
-          mutation: SAVE_FILE_PREVIEW,
+          mutation: gql`
+            mutation ($id: ID!, $preview: Upload) {
+              saveFile(id: $id, input: {}, preview: $preview) {
+                id
+                latest {
+                  data
+                  created_at
+                }
+              }
+            }
+          `,
           variables: {
             id: this.item.id,
             preview: file
@@ -237,12 +231,10 @@ export default {
           :icon="mdiTooltipImage"
           :loading="loading.cover"
           :title="$gettext('Use as cover image')"
-          class="btn-cover-use"
           @click="addCover()"
         />
         <v-btn
           icon
-          class="btn-cover-upload"
           :loading="loading.cover"
           :title="$gettext('Upload cover image')"
           @click="$refs.coverInput.click()"

@@ -1,9 +1,9 @@
 import Url from '../../../js/fields/Url.vue'
 
 describe('Url', () => {
-  it('renders a combobox with ltr class', () => {
+  it('renders a text field with ltr class', () => {
     cy.mount(Url, { props: { config: {} } })
-    cy.get('.v-combobox.ltr').should('exist')
+    cy.get('.v-text-field.ltr').should('exist')
   })
 
   it('displays the modelValue', () => {
@@ -16,9 +16,9 @@ describe('Url', () => {
     cy.get('input').should('have.value', 'https://default.com')
   })
 
-  it('renders with a placeholder config without errors', () => {
+  it('shows placeholder from config', () => {
     cy.mount(Url, { props: { config: { placeholder: 'https://…' } } })
-    cy.get('.v-combobox').should('exist')
+    cy.get('input').should('have.attr', 'placeholder', 'https://…')
   })
 
   it('emits error:false for a valid URL', () => {

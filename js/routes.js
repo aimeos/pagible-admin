@@ -3,8 +3,7 @@
  */
 
 import { createRouter, createWebHistory } from 'vue-router'
-import { useClipboardStore, useDirtyStore, useUserStore, useMessageStore, useViewStack } from './stores'
-import { apolloClient } from './graphql'
+import { useUserStore, useMessageStore } from './stores'
 import { urladmin } from './config'
 import gettext from './i18n'
 
@@ -50,16 +49,8 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
-  const dirtyStore = useDirtyStore()
   const user = useUserStore()
   const message = useMessageStore()
-
-  if (dirtyStore.dirty) {
-    const allowed = await dirtyStore.confirm()
-    if (!allowed) return false
-    return
-  }
-
   const authenticated = await user.isAuthenticated()
 
   if (to.matched.some((record) => record.meta.auth) && !authenticated) {
@@ -74,17 +65,8 @@ router.beforeEach(async (to) => {
   }
 })
 
-router.afterEach((to, from) => {
+router.afterEach((to) => {
   document.title = (to.meta.title || to.path) + ' — PagibleAI CMS'
-
-  if (to.name !== from.name) {
-    useClipboardStore().clear()
-    useViewStack().stack = []
-    apolloClient.cache.evict({ fieldName: 'pages' })
-    apolloClient.cache.evict({ fieldName: 'elements' })
-    apolloClient.cache.evict({ fieldName: 'files' })
-    apolloClient.cache.gc()
-  }
 })
 
 export default router

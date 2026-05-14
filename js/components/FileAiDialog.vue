@@ -2,31 +2,12 @@
 
 <script>
 import gql from 'graphql-tag'
-import { markRaw } from 'vue'
 import FileListItems from './FileListItems.vue'
 import { useAppStore, useUserStore, useMessageStore } from '../stores'
-import { frozenParse, IMAGE_MIME_FILTER, toBlob, url } from '../utils'
+import { recording } from '../audio'
+import { toBlob, url } from '../utils'
+import { transcribe } from '../ai'
 import { mdiMicrophoneOutline, mdiMicrophone, mdiClose, mdiDelete } from '@mdi/js'
-
-const ADD_AI_FILE = gql`
-  mutation ($input: FileInput, $file: Upload) {
-    addFile(input: $input, file: $file) {
-      id
-      mime
-      name
-      path
-      previews
-      updated_at
-      editor
-    }
-  }
-`
-
-const IMAGINE = gql`
-  mutation ($prompt: String!, $context: String, $files: [String!]) {
-    imagine(prompt: $prompt, context: $context, files: $files)
-  }
-`
 
 export default {
   components: {
@@ -52,7 +33,7 @@ export default {
       messages,
       toBlob,
       url,
-      IMAGE_MIME_FILTER,
+      transcribe,
       mdiMicrophoneOutline,
       mdiMicrophone,
       mdiClose,
@@ -79,38 +60,15 @@ export default {
     this.used = this.files || []
   },
 
-  watch: {
-    modelValue(val) {
-      if (!val) {
-        this.items.forEach((item) => {
-          if (item.path.startsWith('blob:')) {
-            URL.revokeObjectURL(item.path)
-          }
-        })
-
-        this.items = []
-        this.used = []
-        this.chat = ''
-      }
-    }
-  },
-
-  beforeUnmount() {
-    if (this.audio) {
-      this.audio.then((rec) => rec?.stop?.()).catch(() => {})
-      this.audio = null
-    }
-
+  unmounted() {
     this.items.forEach((item) => {
       if (item.path.startsWith('blob:')) {
         URL.revokeObjectURL(item.path)
       }
     })
 
-    this.items = []
     this.used = []
-    this.errors = []
-    this.chat = ''
+    this.items = []
   },
 
   methods: {
@@ -122,13 +80,27 @@ export default {
 
       this.loading = true
 
-      fetch(this.url(item.path, true), {credentials: 'include'})
-        .then((response) => response.blob())
+      fetch(this.url(item.path, true))
+        .then((response) => {
+          return response.blob()
+        })
         .then((blob) => {
           const filename = 'ai-image_' + new Date().toISOString().replace(/[^0-9]/g, '') + '.png'
 
           return this.$apollo.mutate({
-            mutation: ADD_AI_FILE,
+            mutation: gql`
+              mutation ($input: FileInput, $file: Upload) {
+                addFile(input: $input, file: $file) {
+                  id
+                  mime
+                  name
+                  path
+                  previews
+                  updated_at
+                  editor
+                }
+              }
+            `,
             variables: {
               input: {
                 name: item.name
@@ -146,9 +118,8 @@ export default {
           }
 
           Object.assign(item, response.data.addFile, {
-            previews: frozenParse(response.data.addFile.previews)
+            previews: JSON.parse(response.data.addFile.previews || '{}')
           })
-
           this.$refs.filelist.invalidate()
           this.$emit('add', [item])
         })
@@ -179,7 +150,11 @@ export default {
 
       this.$apollo
         .mutate({
-          mutation: IMAGINE,
+          mutation: gql`
+            mutation ($prompt: String!, $context: String, $files: [String!]) {
+              imagine(prompt: $prompt, context: $context, files: $files)
+            }
+          `,
           variables: {
             prompt: this.chat,
             context: this.context ? 'Context in JSON format:\n' + JSON.stringify(this.context) : '',
@@ -194,7 +169,10 @@ export default {
           if (response.data.imagine) {
             this.items.unshift({
               path: URL.createObjectURL(this.toBlob(response.data.imagine)),
-              name: this.chat.slice(0, this.chat.length > 250 ? this.chat.lastIndexOf(' ', 250) : 250),
+              name: this.chat.slice(
+                0,
+                this.chat.length > 250 ? this.chat.lastIndexOf(' ', 250) : 250
+              ),
               mime: 'image/png'
             })
           }
@@ -210,7 +188,7 @@ export default {
 
     record() {
       if (!this.audio) {
-        return (this.audio = markRaw(import('../audio').then((mod) => mod.recording().start())))
+        return (this.audio = recording().start())
       }
 
       this.audio.then((rec) => {
@@ -218,8 +196,7 @@ export default {
         this.audio = null
 
         rec.stop()?.then((buffer) => {
-          import('../ai')
-            .then((mod) => mod.transcribe(buffer))
+          this.transcribe(buffer)
             .then((transcription) => {
               this.chat = transcription.asText()
             })
@@ -231,12 +208,6 @@ export default {
     },
 
     remove(idx) {
-      const item = this.items[idx]
-
-      if (item?.path?.startsWith('blob:')) {
-        URL.revokeObjectURL(item.path)
-      }
-
       this.items.splice(idx, 1)
     },
 
@@ -262,18 +233,27 @@ export default {
     scrollable
   >
     <v-card :loading="loading ? 'primary' : false">
-      <v-toolbar density="compact">
-        <v-toolbar-title>{{ $gettext('Create image') }}</v-toolbar-title>
+      <template v-slot:append>
         <v-btn
           v-if="user.can('audio:transcribe')"
           @click="record()"
           :class="{ dictating: audio }"
           :icon="audio ? mdiMicrophoneOutline : mdiMicrophone"
-          :aria-label="$gettext('Dictate')"
+          :title="$gettext('Dictate')"
           :loading="dictating"
+          variant="text"
         />
-        <v-btn :icon="mdiClose" :aria-label="$gettext('Close')" @click="$emit('update:modelValue', false)" />
-      </v-toolbar>
+        <v-btn
+          @click="$emit('update:modelValue', false)"
+          :title="$gettext('Close')"
+          :icon="mdiClose"
+          variant="text"
+        />
+      </template>
+      <template v-slot:title>
+        {{ $gettext('Create image') }}
+      </template>
+
       <v-card-text>
         <v-textarea
           v-model="chat"
@@ -343,7 +323,7 @@ export default {
         <v-tabs>
           <v-tab>{{ $gettext('Select images') }}</v-tab>
         </v-tabs>
-        <FileListItems ref="filelist" :filter="IMAGE_MIME_FILTER" @select="use($event)" />
+        <FileListItems ref="filelist" :filter="{ mime: ['image/gif', 'image/jpeg', 'image/png', 'image/svg+xml', 'image/webp'] }" @select="use($event)" />
       </v-card-text>
     </v-card>
   </v-dialog>

@@ -3,7 +3,8 @@
 <script>
 import gql from 'graphql-tag'
 import FileAiDialog from './FileAiDialog.vue'
-import { defineAsyncComponent, markRaw } from 'vue'
+import FileDetailItemImage from './FileDetailItemImage.vue'
+import FileDetailItemVideo from './FileDetailItemVideo.vue'
 import FileDetailItemAudio from './FileDetailItemAudio.vue'
 import {
   useAppStore,
@@ -12,19 +13,10 @@ import {
   useMessageStore,
   useSideStore
 } from '../stores'
-import { mdiContentCopy, mdiTranslate, mdiCreation, mdiMicrophoneOutline, mdiMicrophone } from '@mdi/js'
+import { recording } from '../audio'
+import { mdiTranslate, mdiCreation, mdiMicrophoneOutline, mdiMicrophone } from '@mdi/js'
 import { toBlob, locales, txlocales, url } from '../utils'
-
-const FileDetailItemImage = defineAsyncComponent(() => import('./FileDetailItemImage.vue'))
-const FileDetailItemVideo = defineAsyncComponent(() => import('./FileDetailItemVideo.vue'))
-
-const VTT_TIMECODE_RE = /^\d{2}:\d{2}:\d{2}\.\d{3} --\> \d{2}:\d{2}:\d{2}\.\d{3}(?: .*)?$/
-
-const DESCRIBE_FILE = gql`
-  mutation ($file: String!, $lang: String!) {
-    describe(file: $file, lang: $lang)
-  }
-`
+import { transcribe, translate } from '../ai'
 
 export default {
   components: {
@@ -70,23 +62,19 @@ export default {
       url,
       locales,
       txlocales,
-      mdiContentCopy,
+      transcribe,
+      translate,
       mdiMicrophone
     }
   },
 
-  beforeUnmount() {
-    if (this.audio) {
-      this.audio.then((rec) => rec?.stop?.()).catch(() => {})
-      this.audio = null
-    }
-
-    this.loading = null
-  },
-
   computed: {
     desclangs() {
-      return [...new Set([...this.languages.available, ...Object.keys(this.item.description || {})])]
+      return this.languages.available
+        .concat(Object.keys(this.item.description || {}))
+        .filter((v, idx, self) => {
+          return self.indexOf(v) === idx
+        })
     },
 
     readonly() {
@@ -95,12 +83,6 @@ export default {
   },
 
   methods: {
-    copyUrl() {
-      navigator.clipboard.writeText(this.url(this.item.path)).then(() => {
-        this.messages.add(this.$gettext('Copied to clipboard'), 'success')
-      })
-    },
-
     describe() {
       const lang = this.desclangs[0] || this.item.lang || 'en'
 
@@ -108,7 +90,11 @@ export default {
 
       this.$apollo
         .mutate({
-          mutation: DESCRIBE_FILE,
+          mutation: gql`
+            mutation ($file: String!, $lang: String!) {
+              describe(file: $file, lang: $lang)
+            }
+          `,
           variables: {
             file: this.item.id,
             lang: lang
@@ -147,7 +133,7 @@ export default {
       }
 
       if (!this.audio) {
-        return (this.audio = markRaw(import('../audio').then((mod) => mod.recording().start())))
+        return (this.audio = recording().start())
       }
 
       this.audio.then((rec) => {
@@ -155,11 +141,9 @@ export default {
         this.audio = null
 
         rec.stop()?.then((buffer) => {
-          import('../ai')
-            .then((mod) => mod.transcribe(buffer))
+          this.transcribe(buffer)
             .then((transcription) => {
               const lang = this.desclangs[0] || this.item.lang || 'en'
-
               this.update(
                 'description',
                 Object.assign(this.item.description || {}, { [lang]: transcription.asText() })
@@ -186,11 +170,9 @@ export default {
 
       this.loading.transcribe = true
 
-      import('../ai')
-        .then((mod) => mod.transcribe(this.item.path))
+      this.transcribe(this.item.path)
         .then((transcription) => {
           const lang = this.desclangs[0] || this.item.lang || 'en'
-
           this.update(
             'transcription',
             Object.assign(this.item.transcription || {}, { [lang]: transcription.asText() })
@@ -221,20 +203,19 @@ export default {
         return
       }
 
+      const promises = []
       const [lang, text] = Object.entries(map || {}).find(([lang, text]) => {
         return text ? true : false
       })
 
       this.loading.translate = true
 
-      return import('../ai').then((ai) => {
-        const promises = []
-
-        this.txlocales(lang)
-          .map((lang) => lang.code)
-          .forEach((lang) => {
-            promises.push(
-              ai.translate(text, lang).then((result) => {
+      this.txlocales(lang)
+        .map((lang) => lang.code)
+        .forEach((lang) => {
+          promises.push(
+            this.translate(text, lang)
+              .then((result) => {
                 if (result[0]) {
                   map[lang] = result[0]
                 }
@@ -242,15 +223,13 @@ export default {
               .catch((error) => {
                 this.$log(`FileDetailItem::translateText(): Error translating text`, error)
               })
-            )
-          })
-
-        return Promise.all(promises).then(() => {
-          this.$emit('update:item', this.item)
-          this.loading.translate = false
-
-          return map
+          )
         })
+
+      return Promise.all(promises).then(() => {
+        this.$emit('update:item', this.item)
+        this.loading.translate = false
+        return map
       })
     },
 
@@ -264,33 +243,37 @@ export default {
         return
       }
 
+      const regex = /^\d{2}:\d{2}:\d{2}\.\d{3} --\> \d{2}:\d{2}:\d{2}\.\d{3}(?: .*)?$/
       const texts = { ...map }
 
       for (const [lang, text] of Object.entries(texts)) {
         if (text) {
           texts[lang] = text
             .split('\n')
-            .map((line) => line.startsWith('WEBVTT') || VTT_TIMECODE_RE.test(line) ? `<x>${line}</x>` : line)
+            .map((line) =>
+              line.startsWith('WEBVTT') || regex.test(line) ? `<x>${line}</x>` : line
+            )
             .filter((line) => line.trim() !== '')
             .join('')
         }
       }
 
-      this.translateText(texts).then((texts) => {
-        for (const [lang, text] of Object.entries(texts)) {
-          if (texts[lang]) {
-            map[lang] = texts[lang]
-              .replaceAll(/\<x\>/g, '\n\n')
-              .replaceAll(/\<\/x\>/g, '\n')
-              .trim()
+      this.translateText(texts)
+        .then((texts) => {
+          for (const [lang, text] of Object.entries(texts)) {
+            if (texts[lang]) {
+              map[lang] = texts[lang]
+                .replaceAll(/\<x\>/g, '\n\n')
+                .replaceAll(/\<\/x\>/g, '\n')
+                .trim()
+            }
           }
-        }
 
-        this.$emit('update:item', this.item)
-      })
-      .catch((error) => {
-        this.$log(`FileDetailItem::translateVTT(): Error translating VTT`, error)
-      })
+          this.$emit('update:item', this.item)
+        })
+        .catch((error) => {
+          this.$log(`FileDetailItem::translateVTT(): Error translating VTT`, error)
+        })
     },
 
     update(what, value) {
@@ -339,18 +322,6 @@ export default {
             variant="underlined"
             :label="$gettext('Language')"
           ></v-select>
-        </v-col>
-      </v-row>
-      <v-row>
-        <v-col cols="12" class="file-url-col">
-          <a :href="url(item.path)" target="_blank" class="file-url">{{ url(item.path) }}</a>
-          <v-btn
-            @click="copyUrl()"
-            :icon="mdiContentCopy"
-            :title="$gettext('Copy URL')"
-            variant="text"
-            size="small"
-          />
         </v-col>
       </v-row>
       <v-row>
@@ -505,23 +476,6 @@ export default {
 <style scoped>
 .v-sheet.scroll {
   max-height: calc(100vh - 96px);
-}
-
-.file-url-col {
-  display: flex;
-  align-items: center;
-  background-color: rgb(var(--v-theme-background));
-}
-
-.file-url {
-  flex: 1;
-  min-width: 0;
-  display: block;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  color: rgb(var(--v-theme-primary));
-  padding: 1rem;
 }
 
 .preview {

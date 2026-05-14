@@ -1,8 +1,6 @@
 <script>
 import PageDetailContentList from './PageDetailContentList.vue'
-import { useSchemaStore } from '../stores'
-import { hasTrue } from '../utils'
-import { markRaw } from 'vue'
+import { useConfigStore } from '../stores'
 
 export default {
   components: {
@@ -12,27 +10,20 @@ export default {
   props: {
     item: { type: Object, required: true },
     assets: { type: Object, required: true },
-    changed: { type: Object, default: null },
     elements: { type: Object, required: true }
   },
 
   emits: ['change', 'error'],
 
   data: () => ({
-    dirty: {},
+    changed: {},
     errors: {},
-    lastError: false,
     tab: 'default'
   }),
 
   setup() {
-    const schemas = useSchemaStore()
-    return { schemas }
-  },
-
-  beforeUnmount() {
-    this.dirty = null
-    this.errors = null
+    const config = useConfigStore()
+    return { config }
   },
 
   computed: {
@@ -40,7 +31,7 @@ export default {
       const type = this.item.type || 'page'
       const theme = this.item.theme || 'cms'
 
-      return this.schemas.themes[theme]?.types?.[type]?.sections || ['main']
+      return this.config.get(`themes.${theme}.types.${type}.sections`, ['main'])
     },
 
     sections() {
@@ -64,7 +55,7 @@ export default {
         sections[name].push(item)
       }
 
-      return markRaw(sections)
+      return sections
     }
   },
 
@@ -76,11 +67,7 @@ export default {
 
     error(what, value) {
       this.errors[what] = value
-      const has = hasTrue(this.errors)
-      if (has !== this.lastError) {
-        this.lastError = has
-        this.$emit('error', has)
-      }
+      this.$emit('error', Object.values(this.errors).includes(true))
     },
 
     mainContentUpdated(event) {
@@ -88,14 +75,8 @@ export default {
       this.$emit('change', 'content')
     },
 
-    flush() {
-      Array.isArray(this.$refs.content)
-        ? this.$refs.content.forEach((ref) => ref.flush())
-        : this.$refs.content?.flush()
-    },
-
     reset() {
-      this.dirty = {}
+      this.changed = {}
       this.errors = {}
 
       Array.isArray(this.$refs.content)
@@ -107,9 +88,11 @@ export default {
       const sections = this.sections
       sections[section] = list
 
-      this.item.content = Object.values(sections).flat()
+      this.item.content = Object.values(sections).reduce((acc, entries) => {
+        return acc.concat(entries)
+      }, [])
 
-      this.dirty[section] = true
+      this.changed[section] = true
     }
   }
 }
@@ -124,7 +107,7 @@ export default {
             v-for="(list, section) in sections"
             :key="section"
             :class="{
-              changed: dirty[section],
+              changed: changed[section],
               error: errors[section]
             }"
             :value="section"
@@ -139,7 +122,6 @@ export default {
               :section="section"
               :item="item"
               :assets="assets"
-              :changed="changed"
               :content="list"
               :elements="elements"
               @error="error(section, $event)"
@@ -155,7 +137,6 @@ export default {
           ref="content"
           :item="item"
           :assets="assets"
-          :changed="changed"
           :content="item.content || []"
           :elements="elements"
           @error="error('main', $event)"

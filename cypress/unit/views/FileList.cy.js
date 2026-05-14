@@ -47,7 +47,7 @@ describe('FileList', () => {
 
   it('renders the aside toggle button', () => {
     mountFileList()
-    cy.get('button.btn-sidemenu').should('exist')
+    cy.get('button[title="Toggle side menu"]').should('exist')
   })
 
   it('renders the User stub', () => {
