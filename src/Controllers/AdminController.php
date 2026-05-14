@@ -32,7 +32,7 @@ class AdminController extends Controller
                 "script-src 'self' 'nonce-{$nonce}' blob:;" .
                 "media-src 'self' data: blob: http: https: " . $media . ";" .
                 "img-src 'self' data: blob: http: https: " . $media . ";" .
-                "connect-src 'self' http: https: " . $media . ";" .
+                "connect-src 'self' ws: wss: http: https: " . $media . ";" .
                 "frame-src 'self' http: https:;" .
                 "worker-src 'self' blob:;"
             );
@@ -55,6 +55,16 @@ class AdminController extends Controller
 
         if (!in_array($method, ['GET', 'HEAD'])) {
             abort(405, "Unsupported HTTP method: $method");
+        }
+
+        try {
+            [$expires, $hmac] = explode( '|', base64_decode( (string) $request->query( 'token', '' ) ) );
+
+            if( !hash_equals( hash_hmac( 'sha256', $expires, config( 'app.key' ) ), $hmac ) || (int) $expires < now()->timestamp ) {
+                abort( 403, 'Unauthorized' );
+            }
+        } catch( \Exception $e ) {
+            abort( 403, 'Unauthorized' );
         }
 
         $url = (string) $request->query('url');

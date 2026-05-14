@@ -1,5 +1,9 @@
 import TextField from '../../../js/fields/Text.vue'
 
+Cypress.on('uncaught:exception', (err) => {
+  if (err.message.includes('ckeditor5/translations')) return false
+})
+
 const stubs = {
   Ckeditor: {
     template: '<div class="ck-editor-stub" />',
@@ -23,14 +27,6 @@ function mountText(props = {}) {
 }
 
 describe('Text (CKEditor)', () => {
-  beforeEach(() => {
-    cy.on('uncaught:exception', (err) => {
-      if (err.message.includes('ckeditor5/translations')) {
-        return false
-      }
-    })
-  })
-
   it('renders a container', () => {
     mountText()
     cy.get('div').should('exist')
