@@ -32,7 +32,7 @@ class AdminController extends Controller
                 "script-src 'self' 'nonce-{$nonce}' blob:;" .
                 "media-src 'self' data: blob: http: https: " . $media . ";" .
                 "img-src 'self' data: blob: http: https: " . $media . ";" .
-                "connect-src 'self' http: https: " . $media . ";" .
+                "connect-src 'self' ws: wss: http: https: " . $media . ";" .
                 "frame-src 'self' http: https:;" .
                 "worker-src 'self' blob:;"
             );
@@ -55,6 +55,16 @@ class AdminController extends Controller
 
         if (!in_array($method, ['GET', 'HEAD'])) {
             abort(405, "Unsupported HTTP method: $method");
+        }
+
+        try {
+            [$expires, $hmac] = explode( '|', base64_decode( (string) $request->query( 'token', '' ) ) );
+
+            if( !hash_equals( hash_hmac( 'sha256', $expires, config( 'app.key' ) ), $hmac ) || (int) $expires < now()->timestamp ) {
+                abort( 403, 'Unauthorized' );
+            }
+        } catch( \Exception $e ) {
+            abort( 403, 'Unauthorized' );
         }
 
         $url = (string) $request->query('url');
@@ -82,7 +92,11 @@ class AdminController extends Controller
         $headers = $this->buildHeaders($response, $range);
 
         $statusCode = isset( $headers['Content-Range'] ) ? 206 : $response->status();
-        $maxBytes = (int) $headers['Content-Length'];
+        $maxBytes = (int) ( $headers['Content-Length'] ?? 0 ) ?: config( 'cms.admin.proxy.maxsize', 10 ) * 1024 * 1024;
+
+        if( $method === 'HEAD' ) {
+            return response( '', $statusCode, $headers );
+        }
 
         return response()->stream(function () use ($response, $maxBytes) {
             $this->stream($response->toPsrResponse()->getBody(), $maxBytes);
@@ -119,9 +133,12 @@ class AdminController extends Controller
             'Access-Control-Allow-Methods' => 'GET, HEAD, OPTIONS',
             'Access-Control-Allow-Headers' => 'Content-Type, Content-Length, Content-Range, Accept-Encoding, Range',
             'Accept-Ranges' => 'bytes',
-            'Content-Length' => $contentLength,
             'Content-Type' => $response->header('Content-Type') ?: 'application/octet-stream',
         ];
+
+        if( $contentLength > 0 ) {
+            $headers['Content-Length'] = $contentLength;
+        }
 
         if ($contentRange) {
             $headers['Content-Range'] = $contentRange;

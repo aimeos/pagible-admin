@@ -1,5 +1,9 @@
 import MarkdownField from '../../../js/fields/Markdown.vue'
 
+Cypress.on('uncaught:exception', (err) => {
+  if (err.message.includes('ckeditor5/translations')) return false
+})
+
 const stubs = {
   Ckeditor: {
     template: '<div class="ck-editor-stub" />',
@@ -23,14 +27,6 @@ function mountMarkdown(props = {}) {
 }
 
 describe('Markdown (CKEditor)', () => {
-  beforeEach(() => {
-    cy.on('uncaught:exception', (err) => {
-      if (err.message.includes('ckeditor5/translations')) {
-        return false
-      }
-    })
-  })
-
   it('renders a container', () => {
     mountMarkdown()
     cy.get('div').should('exist')
