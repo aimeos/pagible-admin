@@ -2,7 +2,8 @@ import PageDetailItem from '../../../js/components/PageDetailItem.vue'
 
 const stubs = {
   PageDetailItemProps: { template: '<div class="props-stub" />' },
-  PageDetailItemSection: { template: '<div class="section-stub" />' },
+  PageDetailItemMeta: { template: '<div class="meta-stub" />' },
+  PageDetailItemConfig: { template: '<div class="config-stub" />' },
 }
 
 const item = {
@@ -51,13 +52,13 @@ describe('PageDetailItem', () => {
   it('switches to Meta tab when clicked', () => {
     mountDetail()
     cy.contains('.v-tab', 'Meta').click()
-    cy.get('.section-stub').should('exist')
+    cy.get('.meta-stub').should('exist')
   })
 
   it('switches to Config tab when clicked', () => {
     mountDetail()
     cy.contains('.v-tab', 'Config').click()
-    cy.get('.section-stub').should('exist')
+    cy.get('.config-stub').should('exist')
   })
 
   it('emits update:aside when Detail tab is clicked', () => {

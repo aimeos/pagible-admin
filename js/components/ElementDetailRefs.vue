@@ -4,26 +4,6 @@
 import gql from 'graphql-tag'
 import { useUserStore } from '../stores'
 
-const FETCH_ELEMENT_REFS = gql`
-  query ($id: ID!) {
-    element(id: $id) {
-      id
-      bypages {
-        id
-        path
-        name
-      }
-      byversions {
-        id
-        versionable_id
-        versionable_type
-        published
-        publish_at
-      }
-    }
-  }
-`
-
 export default {
   props: {
     item: { type: Object, required: true }
@@ -43,27 +23,6 @@ export default {
     return { user }
   },
 
-  beforeUnmount() {
-    this.versions = null
-    this.element = null
-  },
-
-  methods: {
-    mapVersion(item) {
-      const type = item.versionable_type.slice(item.versionable_type.lastIndexOf('\\') + 1)
-
-      return {
-        id: item.versionable_id,
-        type,
-        published: item.published
-          ? this.$gettext('yes')
-          : item.publish_at
-            ? new Date(item.publish_at).toLocaleDateString()
-            : this.$gettext('no')
-      }
-    }
-  },
-
   watch: {
     item: {
       immediate: true,
@@ -74,8 +33,25 @@ export default {
 
         this.$apollo
           .query({
-            query: FETCH_ELEMENT_REFS,
-            fetchPolicy: 'no-cache',
+            query: gql`
+              query ($id: ID!) {
+                element(id: $id) {
+                  id
+                  bypages {
+                    id
+                    path
+                    name
+                  }
+                  byversions {
+                    id
+                    versionable_id
+                    versionable_type
+                    published
+                    publish_at
+                  }
+                }
+              }
+            `,
             variables: {
               id: item.id
             }
@@ -85,17 +61,22 @@ export default {
               throw result.errors
             }
 
-            const element = result.data?.element || {}
-            this.element = Object.freeze({
-              ...element,
-              bypages: Object.freeze((element.bypages || []).map(p => Object.freeze(p)))
-            })
-            this.versions = Object.freeze((result.data?.element?.byversions || [])
-              .map((item) => Object.freeze(this.mapVersion(item)))
+            this.element = result.data?.element || {}
+            this.versions = (result.data?.element?.byversions || [])
+              .map((item) => {
+                return {
+                  id: item.versionable_id,
+                  type: item.versionable_type.split('\\').at(-1),
+                  published: item.published
+                    ? this.$gettext('yes')
+                    : item.publish_at
+                      ? new Date(item.publish_at).toLocaleDateString()
+                      : this.$gettext('no')
+                }
+              })
               .filter((item) => {
                 return this.user.can(item.type.toLowerCase() + ':view')
               })
-            )
           })
           .catch((error) => {
             this.$log(`ElementDetailRef::watch(item): Error fetching element`, item, error)

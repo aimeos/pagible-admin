@@ -18,41 +18,8 @@ import {
   AutoLink,
   Link
 } from 'ckeditor5'
-import { markRaw } from 'vue'
 import { Ckeditor } from '@ckeditor/ckeditor5-vue'
-import { translationCache, TRANSLATION_CACHE_MAX } from '../ckcache'
 import 'ckeditor5/ckeditor5.css'
-
-const ckPlugins = [
-  Markdown,
-  Essentials,
-  PasteFromOffice,
-  Fullscreen,
-  Clipboard,
-  FindAndReplace,
-  RemoveFormat,
-  Paragraph,
-  Bold,
-  Italic,
-  Strikethrough,
-  Code,
-  AutoLink,
-  Link
-]
-
-const ckToolbar = [
-  'undo',
-  'redo',
-  'removeFormat',
-  '|',
-  'bold',
-  'italic',
-  'strikethrough',
-  'link',
-  'code',
-  '|',
-  'fullscreen'
-]
 
 export default {
   components: {
@@ -72,8 +39,7 @@ export default {
   data() {
     return {
       destroyed: false,
-      editor: markRaw(ClassicEditor),
-      lastError: null,
+      editor: ClassicEditor,
       visible: false,
       translations: undefined
     }
@@ -81,22 +47,11 @@ export default {
 
   async created() {
     const locale = this.$vuetify.locale.current
-
-    if (!translationCache[locale]) {
-      const keys = Object.keys(translationCache)
-
-      if (keys.length >= TRANSLATION_CACHE_MAX) {
-        delete translationCache[keys[0]]
-      }
-
-      const mod = await import(`ckeditor5/translations/${locale}.js`)
-
-      translationCache[locale] = [mod.default]
-    }
+    const mod = await import(`ckeditor5/translations/${locale}.js`)
 
     if (this.destroyed) return
 
-    this.translations = translationCache[locale]
+    this.translations = [mod.default]
   },
 
   beforeUnmount() {
@@ -106,15 +61,42 @@ export default {
 
   computed: {
     ckconfig() {
-      return markRaw({
+      return {
         licenseKey: 'GPL',
-        plugins: ckPlugins,
-        toolbar: ckToolbar,
+        plugins: [
+          Markdown,
+          Essentials,
+          PasteFromOffice,
+          Fullscreen,
+          Clipboard,
+          FindAndReplace,
+          RemoveFormat,
+          Paragraph,
+          Bold,
+          Italic,
+          Strikethrough,
+          Code,
+          AutoLink,
+          Link
+        ],
+        toolbar: [
+          'undo',
+          'redo',
+          'removeFormat',
+          '|',
+          'bold',
+          'italic',
+          'strikethrough',
+          'link',
+          'code',
+          '|',
+          'fullscreen'
+        ],
         translations: this.translations,
         language: {
           ui: this.$vuetify.locale.current
         }
-      })
+      }
     },
 
     rules() {
@@ -149,11 +131,12 @@ export default {
     modelValue: {
       immediate: true,
       handler(val) {
-        const hasError = !this.rules.every((rule) => rule(val ?? this.config.default ?? '') === true)
-        if (hasError !== this.lastError) {
-          this.lastError = hasError
-          this.$emit('error', hasError)
-        }
+        this.$emit(
+          'error',
+          !this.rules.every((rule) => {
+            return rule(val ?? this.config.default ?? '') === true
+          })
+        )
       }
     }
   }
@@ -161,7 +144,7 @@ export default {
 </script>
 
 <template>
-  <div v-visible="show">
+  <div v-observe-visibility="show">
     <div v-if="visible">
       <ckeditor
         :config="ckconfig"

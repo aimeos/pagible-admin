@@ -1,34 +1,14 @@
 /** @license LGPL, https://opensource.org/license/lgpl-3-0 */
 
 <script>
-import UnsavedDialog from './components/UnsavedDialog.vue'
-import { useDirtyStore, useMessageStore, useViewStack } from './stores'
+import { useMessageStore, useViewStack } from './stores'
 
 export default {
-  components: { UnsavedDialog },
-
   setup() {
-    const dirtyStore = useDirtyStore()
     const messages = useMessageStore()
     const viewStack = useViewStack()
 
-    return { dirtyStore, messages, viewStack }
-  },
-
-  created() {
-    window.addEventListener('beforeunload', this.beforeUnload)
-  },
-
-  beforeUnmount() {
-    window.removeEventListener('beforeunload', this.beforeUnload)
-  },
-
-  methods: {
-    beforeUnload(e) {
-      if (this.dirtyStore.dirty) {
-        e.preventDefault()
-      }
-    }
+    return { messages, viewStack }
   }
 }
 </script>
@@ -38,7 +18,7 @@ export default {
     <main>
       <transition-group name="slide-stack">
         <v-layout ref="baseview" key="list" class="view" style="z-index: 10">
-          <router-view :key="$route.path" />
+          <router-view />
         </v-layout>
 
         <v-layout
@@ -53,7 +33,6 @@ export default {
       </transition-group>
     </main>
 
-    <UnsavedDialog />
     <v-snackbar-queue v-model="messages.queue"></v-snackbar-queue>
     <div role="status" aria-live="polite" aria-atomic="true" class="v-sr-only">
       {{ messages.queue[messages.queue.length - 1]?.text }}

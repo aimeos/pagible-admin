@@ -52,63 +52,63 @@ describe('FileDetailItemImage', () => {
 
   it('renders crop button', () => {
     mountImage({}, { 'file:save': true })
-    cy.get('.toolbar .v-btn.btn-crop').should('exist')
+    cy.get('.toolbar .v-btn[title="Crop selected area"]').should('exist')
   })
 
   it('renders rotate buttons', () => {
     mountImage({}, { 'file:save': true })
-    cy.get('.toolbar .v-btn.btn-rotate-ccw').should('exist')
-    cy.get('.toolbar .v-btn.btn-rotate-cw').should('exist')
+    cy.get('.toolbar .v-btn[title="Rotate counter-clockwise"]').should('exist')
+    cy.get('.toolbar .v-btn[title="Rotate clockwise"]').should('exist')
   })
 
   it('renders flip buttons', () => {
     mountImage({}, { 'file:save': true })
-    cy.get('.toolbar .v-btn.btn-flip-h').should('exist')
-    cy.get('.toolbar .v-btn.btn-flip-v').should('exist')
+    cy.get('.toolbar .v-btn[title="Flip horizontally"]').should('exist')
+    cy.get('.toolbar .v-btn[title="Flip vertically"]').should('exist')
   })
 
   it('renders download button', () => {
     mountImage({}, { 'file:save': true })
-    cy.get('.toolbar .v-btn.btn-download').should('exist')
+    cy.get('.toolbar .v-btn[title="Download"]').should('exist')
   })
 
   it('shows erase button with image:erase permission', () => {
     mountImage({}, { 'file:save': true, 'image:erase': true })
-    cy.get('.toolbar .v-btn.btn-erase').should('exist')
+    cy.get('.toolbar .v-btn[title="Erase selected area"]').should('exist')
   })
 
   it('hides erase button without image:erase permission', () => {
     mountImage({}, { 'file:save': true })
-    cy.get('.toolbar .v-btn.btn-erase').should('not.exist')
+    cy.get('.toolbar .v-btn[title="Erase selected area"]').should('not.exist')
   })
 
   it('shows isolate button with image:isolate permission', () => {
     mountImage({}, { 'file:save': true, 'image:isolate': true })
-    cy.get('.toolbar .v-btn.btn-remove-bg').should('exist')
+    cy.get('.toolbar .v-btn[title="Remove background"]').should('exist')
   })
 
   it('hides isolate button without image:isolate permission', () => {
     mountImage({}, { 'file:save': true })
-    cy.get('.toolbar .v-btn.btn-remove-bg').should('not.exist')
+    cy.get('.toolbar .v-btn[title="Remove background"]').should('not.exist')
   })
 
   it('shows upscale menu with image:upscale permission', () => {
     mountImage({}, { 'file:save': true, 'image:upscale': true })
-    cy.get('.toolbar .v-btn.btn-upscale').should('exist')
+    cy.get('.toolbar .v-btn[title="Upscale image"]').should('exist')
   })
 
   it('hides upscale menu without image:upscale permission', () => {
     mountImage({}, { 'file:save': true })
-    cy.get('.toolbar .v-btn.btn-upscale').should('not.exist')
+    cy.get('.toolbar .v-btn[title="Upscale image"]').should('not.exist')
   })
 
   it('shows expand button with image:uncrop permission', () => {
     mountImage({}, { 'file:save': true, 'image:uncrop': true })
-    cy.get('.toolbar .v-btn.btn-expand').should('exist')
+    cy.get('.toolbar .v-btn[title="Expand image"]').should('exist')
   })
 
   it('hides expand button without image:uncrop permission', () => {
     mountImage({}, { 'file:save': true })
-    cy.get('.toolbar .v-btn.btn-expand').should('not.exist')
+    cy.get('.toolbar .v-btn[title="Expand image"]').should('not.exist')
   })
 })

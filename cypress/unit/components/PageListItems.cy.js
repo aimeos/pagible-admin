@@ -61,22 +61,22 @@ describe('PageListItems', () => {
 
   it('renders reload button', () => {
     mountList({}, { 'page:view': true })
-    cy.get('button.btn-reload').should('exist')
+    cy.get('button[title="Reload page tree"]').should('exist')
   })
 
   it('shows add button with page:add permission and not embed', () => {
     mountList({ embed: false }, { 'page:view': true, 'page:add': true })
-    cy.get('button.btn-add').should('exist')
+    cy.get('button[title="Add page"]').should('exist')
   })
 
   it('hides add button when embed is true', () => {
     mountList({ embed: true }, { 'page:view': true, 'page:add': true })
-    cy.get('button.btn-add').should('not.exist')
+    cy.get('button[title="Add page"]').should('not.exist')
   })
 
   it('hides add button without page:add permission', () => {
     mountList({}, { 'page:view': true })
-    cy.get('button.btn-add').should('not.exist')
+    cy.get('button[title="Add page"]').should('not.exist')
   })
 
   it('shows no entries message when not loading and items are empty', () => {
@@ -86,11 +86,11 @@ describe('PageListItems', () => {
 
   it('hides sort dropdown in tree view (default)', () => {
     mountList({ filter: { view: 'tree' } }, { 'page:view': true })
-    cy.get('.btn-sort button').should('not.exist')
+    cy.get('button[title="Sort by"]').should('not.exist')
   })
 
   it('shows sort dropdown in list view', () => {
     mountList({ filter: { view: 'list' } }, { 'page:view': true })
-    cy.get('.btn-sort button').should('exist')
+    cy.get('button[title="Sort by"]').should('exist')
   })
 })

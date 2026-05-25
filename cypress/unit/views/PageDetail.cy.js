@@ -49,10 +49,6 @@ function mountDetail(perms = {}, item = {}) {
 }
 
 describe('PageDetail', () => {
-  beforeEach(() => {
-    cy.on('uncaught:exception', () => false)
-  })
-
   it('renders the app bar', () => {
     mountDetail()
     cy.get('.v-app-bar').should('exist')
@@ -65,7 +61,7 @@ describe('PageDetail', () => {
 
   it('renders the back button', () => {
     mountDetail()
-    cy.get('button.btn-back').should('exist')
+    cy.get('button[title="Back to list view"]').should('exist')
   })
 
   it('renders Editor, Content, and Page tabs', () => {
@@ -102,17 +98,17 @@ describe('PageDetail', () => {
 
   it('shows translate button with text:translate permission', () => {
     mountDetail({ 'text:translate': true })
-    cy.get('.btn-translate-page button').should('exist')
+    cy.get('button[title="Translate page"]').should('exist')
   })
 
   it('hides translate button without text:translate permission', () => {
     mountDetail({})
-    cy.get('.btn-translate-page button').should('not.exist')
+    cy.get('button[title="Translate page"]').should('not.exist')
   })
 
   it('renders the history button', () => {
     mountDetail()
-    cy.get('button.btn-history').should('exist')
+    cy.get('button[title="View history"]').should('exist')
   })
 
   describe('computed properties', () => {
@@ -133,7 +129,7 @@ describe('PageDetail', () => {
     it('hasChanged is true when changed has a truthy entry', () => {
       mountDetail().then(() => {
         const vm = Cypress.vueWrapper.findComponent(PageDetail).vm
-        vm.dirty = { content: true }
+        vm.changed = { content: true }
         expect(vm.hasChanged).to.be.true
       })
     })
@@ -152,7 +148,7 @@ describe('PageDetail', () => {
       mountDetail().then(() => {
         const vm = Cypress.vueWrapper.findComponent(PageDetail).vm
         vm.update('content', [])
-        expect(vm.dirty.content).to.be.true
+        expect(vm.changed.content).to.be.true
       })
     })
 
@@ -161,7 +157,7 @@ describe('PageDetail', () => {
         const vm = Cypress.vueWrapper.findComponent(PageDetail).vm
         vm.update('page', { name: 'New' })
         expect(vm.item.name).to.equal('New')
-        expect(vm.dirty.page).to.be.true
+        expect(vm.changed.page).to.be.true
       })
     })
   })
@@ -224,115 +220,6 @@ describe('PageDetail', () => {
         const content = [{ files: ['f1', 'f2', 'f3'] }]
         const result = vm.obsolete(content)
         expect(result[0].files).to.deep.equal(['f1'])
-      })
-    })
-  })
-
-  describe('publish schedule', () => {
-    it('renders the schedule publish button', () => {
-      mountDetail({ 'page:publish': true })
-      cy.get('.menu-publishat').should('exist')
-    })
-
-    it('opens menu with date and time pickers', () => {
-      mountDetail({ 'page:publish': true })
-      cy.get('.menu-publishat').click()
-      cy.get('.v-date-picker').should('exist')
-      cy.get('.v-time-picker').should('exist')
-    })
-
-    it('disables publish button in menu when no date selected', () => {
-      mountDetail({ 'page:publish': true })
-      cy.get('.menu-publishat').click()
-      cy.get('.menu-content .v-btn').last().should('be.disabled')
-    })
-
-    it('published() combines date and time', () => {
-      mountDetail({ 'page:publish': true }).then(() => {
-        const vm = Cypress.vueWrapper.findComponent(PageDetail).vm
-        vm.publishAt = new Date(2026, 5, 15)
-        vm.publishTime = '14:30'
-        cy.spy(vm, 'publish').as('publishSpy')
-        vm.published()
-        cy.get('@publishSpy').should('have.been.calledOnce').then(() => {
-          const arg = vm.publish.args[0][0]
-          expect(arg.getFullYear()).to.equal(2026)
-          expect(arg.getMonth()).to.equal(5)
-          expect(arg.getDate()).to.equal(15)
-          expect(arg.getHours()).to.equal(14)
-          expect(arg.getMinutes()).to.equal(30)
-        })
-      })
-    })
-
-    it('published() uses midnight when no time selected', () => {
-      mountDetail({ 'page:publish': true }).then(() => {
-        const vm = Cypress.vueWrapper.findComponent(PageDetail).vm
-        vm.publishAt = new Date(2026, 5, 15)
-        vm.publishTime = null
-        cy.spy(vm, 'publish').as('publishSpy')
-        vm.published()
-        cy.get('@publishSpy').should('have.been.calledOnce').then(() => {
-          const arg = vm.publish.args[0][0]
-          expect(arg.getHours()).to.equal(0)
-          expect(arg.getMinutes()).to.equal(0)
-        })
-      })
-    })
-  })
-
-  describe('conflict UI', () => {
-    it('hides changes button when changed is null', () => {
-      mountDetail()
-      cy.get('.menu-changed').should('not.exist')
-    })
-
-    it('shows changes button when changed is set', () => {
-      mountDetail().then(() => {
-        const vm = Cypress.vueWrapper.findComponent(PageDetail).vm
-        vm.changed = { editor: 'x', data: { title: { previous: 'a', current: 'b' } } }
-        cy.get('.menu-changed').should('exist')
-      })
-    })
-
-    it('shows changes button even when all conflicts are resolved', () => {
-      mountDetail().then(() => {
-        const vm = Cypress.vueWrapper.findComponent(PageDetail).vm
-        vm.changed = { editor: 'x', data: { title: { previous: 'a', current: 'b', overwritten: 'c', resolved: 'c' } } }
-        cy.get('.menu-changed').should('exist')
-      })
-    })
-
-    it('adds warning class to save button when hasConflict is true', () => {
-      mountDetail({ 'page:save': true }).then(() => {
-        const vm = Cypress.vueWrapper.findComponent(PageDetail).vm
-        vm.changed = { editor: 'x', data: { title: { previous: 'a', current: 'b', overwritten: 'c' } } }
-        vm.dirty = { page: true }
-        cy.get('.menu-save').should('have.class', 'warning')
-      })
-    })
-
-    it('does not add warning class when no conflicts', () => {
-      mountDetail({ 'page:save': true }).then(() => {
-        const vm = Cypress.vueWrapper.findComponent(PageDetail).vm
-        vm.dirty = { page: true }
-        cy.get('.menu-save').should('not.have.class', 'warning')
-      })
-    })
-
-    it('hasConflict is false when all conflicts are resolved', () => {
-      mountDetail().then(() => {
-        const vm = Cypress.vueWrapper.findComponent(PageDetail).vm
-        vm.changed = { editor: 'x', data: { title: { previous: 'a', current: 'b', overwritten: 'c', resolved: 'c' } } }
-        expect(vm.hasConflict).to.be.false
-      })
-    })
-
-    it('hasConflict is true when overwritten exists without resolved', () => {
-      mountDetail().then(() => {
-        const vm = Cypress.vueWrapper.findComponent(PageDetail).vm
-        vm.changed = { editor: 'x', data: { title: { previous: 'a', current: 'b', overwritten: 'c' } } }
-        expect(vm.hasConflict).to.be.true
       })
     })
   })

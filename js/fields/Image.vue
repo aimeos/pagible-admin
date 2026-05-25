@@ -13,11 +13,9 @@ import {
 } from '@mdi/js'
 import File from './File.vue'
 import FileAiDialog from '../components/FileAiDialog.vue'
-import { IMAGE_MIME_FILTER } from '../utils'
 
 export default {
   extends: File,
-  inheritAttrs: false,
 
   components: {
     FileAiDialog
@@ -26,7 +24,6 @@ export default {
   setup() {
     return {
       ...File.setup(),
-      IMAGE_MIME_FILTER,
       mdiDotsVertical,
       mdiPencil,
       mdiTrashCan,
@@ -52,13 +49,8 @@ export default {
     handle(data, path) {
       return new Promise((resolve, reject) => {
         const image = new Image()
-        const cleanup = () => {
-          image.onload = null
-          image.onerror = null
-          image.src = ''
-        }
-        image.onload = () => { cleanup(); resolve() }
-        image.onerror = (err) => { cleanup(); reject(err) }
+        image.onload = resolve
+        image.onerror = reject
         image.src = this.url(Object.values(data.previews).shift() || data.path)
       })
         .then(() => {
@@ -97,7 +89,7 @@ export default {
           <v-img
             v-if="file.path"
             :srcset="srcset(file.previews)"
-            :src="url(Object.values(file.previews)[0] ?? file.path)"
+            :src="url(file.path)"
             :alt="file.name"
             :draggable="false"
           />
@@ -133,14 +125,12 @@ export default {
             @click="vfiles = true"
             :title="$gettext('Add file')"
             :icon="mdiButtonCursor"
-            class="btn-add"
             variant="text"
           />
           <v-btn
             @click="vurls = true"
             :title="$gettext('Add file from URL')"
             :icon="mdiLinkVariantPlus"
-            class="btn-add-url"
             variant="text"
           />
           <v-btn
@@ -148,10 +138,9 @@ export default {
             @click="vcreate = true"
             :title="$gettext('Create file')"
             :icon="mdiCreation"
-            class="btn-create"
             variant="text"
           />
-          <v-btn :title="$gettext('Upload file')" :icon="mdiUpload" class="btn-upload" variant="text">
+          <v-btn :title="$gettext('Upload file')" :icon="mdiUpload" variant="text">
             <v-file-input
               v-model="selected"
               @update:modelValue="add($event)"
@@ -182,13 +171,13 @@ export default {
       </v-row>
       <v-row>
         <v-col cols="12" md="3" class="name">{{ $gettext('updated') }}:</v-col>
-        <v-col cols="12" md="9">{{ formatDate(file.updated_at) }}</v-col>
+        <v-col cols="12" md="9">{{ new Date(file.updated_at).toLocaleString() }}</v-col>
       </v-row>
     </v-col>
   </v-row>
 
   <Teleport to="body">
-    <FileDialog v-model="vfiles" @add="addFromDialog" :filter="IMAGE_MIME_FILTER" grid />
+    <FileDialog v-model="vfiles" @add="addFromDialog" :filter="{ mime: ['image/gif', 'image/jpeg', 'image/png', 'image/svg+xml', 'image/webp'] }" grid />
   </Teleport>
 
   <Teleport to="body">

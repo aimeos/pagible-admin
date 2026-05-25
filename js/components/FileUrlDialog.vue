@@ -3,22 +3,7 @@
 <script>
 import gql from 'graphql-tag'
 import { useAppStore, useMessageStore } from '../stores'
-import { frozenParse } from '../utils'
 import { mdiClose, mdiCheck, mdiDelete } from '@mdi/js'
-
-const ADD_URL_FILE = gql`
-  mutation ($input: FileInput) {
-    addFile(input: $input) {
-      id
-      mime
-      name
-      path
-      previews
-      updated_at
-      editor
-    }
-  }
-`
 
 export default {
   props: {
@@ -38,7 +23,6 @@ export default {
 
   data() {
     return {
-      abortController: null,
       errors: [],
       input: '',
       items: {},
@@ -61,7 +45,19 @@ export default {
         promises.push(
           this.$apollo
             .mutate({
-              mutation: ADD_URL_FILE,
+              mutation: gql`
+                mutation ($input: FileInput) {
+                  addFile(input: $input) {
+                    id
+                    mime
+                    name
+                    path
+                    previews
+                    updated_at
+                    editor
+                  }
+                }
+              `,
               variables: {
                 input: {
                   path: item.path,
@@ -75,7 +71,7 @@ export default {
               }
 
               Object.assign(item, response.data.addFile, {
-                previews: frozenParse(response.data.addFile.previews)
+                previews: JSON.parse(response.data.addFile.previews || '{}')
               })
             })
             .catch((error) => {
@@ -120,12 +116,6 @@ export default {
     },
 
     update() {
-      if (this.abortController) {
-        this.abortController.abort()
-      }
-      this.abortController = new AbortController()
-      const signal = this.abortController.signal
-
       const urls = this.input
         .split('\n')
         .map((url) => url.trim())
@@ -151,8 +141,7 @@ export default {
 
         fetch(this.app.urlproxy.replace('_url_', encodeURIComponent(url)), {
           credentials: 'include',
-          method: 'HEAD',
-          signal
+          method: 'HEAD'
         })
           .then((response) => {
             if (!response.ok) {
@@ -177,8 +166,6 @@ export default {
             }
           })
           .catch((error) => {
-            if (error.name === 'AbortError') return
-
             this.messages.add(
               this.$gettext(`Error adding file %{path}`, { path: url }) + ':\n' + error,
               'error'
@@ -186,17 +173,6 @@ export default {
             this.$log(`FileUrlDialog::update(): Error fetching ${url}`, error)
           })
       })
-    },
-
-    cleanup() {
-      if (this.abortController) {
-        this.abortController.abort()
-        this.abortController = null
-      }
-
-      this.items = {}
-      this.errors = []
-      this.input = ''
     }
   }
 }
@@ -206,18 +182,26 @@ export default {
   <v-dialog
     :aria-label="$gettext('Add files from URLs')"
     :modelValue="modelValue"
-    @afterLeave="cleanup(); $emit('update:modelValue', false)"
+    @afterLeave="$emit('update:modelValue', false)"
     max-width="1200"
     scrollable
   >
     <v-card :loading="loading ? 'primary' : false">
-      <v-toolbar density="compact">
-        <v-toolbar-title>{{ $gettext('Add files from URLs') }}</v-toolbar-title>
+      <template v-slot:append>
         <v-btn v-if="Object.keys(items).length" variant="outlined" @click="add()">
           {{ multiple ? $gettext('Add files') : $gettext('Add file') }}
         </v-btn>
-        <v-btn :icon="mdiClose" :aria-label="$gettext('Close')" @click="$emit('update:modelValue', false)" />
-      </v-toolbar>
+        <v-btn
+          @click="$emit('update:modelValue', false)"
+          :title="$gettext('Close')"
+          :icon="mdiClose"
+          variant="text"
+        />
+      </template>
+      <template v-slot:title>
+        {{ $gettext('Add files from URLs') }}
+      </template>
+
       <v-card-text>
         <v-textarea
           v-if="multiple"

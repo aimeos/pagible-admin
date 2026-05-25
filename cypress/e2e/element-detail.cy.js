@@ -1,10 +1,9 @@
 /**
- * E2E tests for the element detail view.
+ * E2E tests for the element detail stacked view.
  *
- * The ElementDetail component opens via Vue Router navigation when an
- * element item is clicked in the list (/elements → /elements/:id). The
- * list view is replaced by the detail view inside the same router-view
- * container.
+ * The ElementDetail component opens as an overlay on top of the element list
+ * when an element item is clicked. Both views coexist in the DOM (stacked
+ * via z-index), so selectors must be scoped to the detail's .view container.
  *
  * GraphQL is intercepted at POST /graphql. Apollo's BatchHttpLink sends
  * requests as JSON arrays, so the handler checks whether req.body is an
@@ -60,7 +59,7 @@ function makeElementDetail(overrides = {}) {
     latest: {
       id: '10',
       published: true,
-      data: JSON.stringify({ name: 'Hero Banner', type: 'heading', lang: 'en' }),
+      data: JSON.stringify({}),
       editor: 'admin@example.com',
       created_at: '2026-01-01 00:00:00',
       files: [],
@@ -134,8 +133,6 @@ function setupIntercept({
           data: {
             me: {
               permission: meResponse.permission,
-              settings: meResponse.settings || '{}',
-              token: meResponse.token || null,
               email: meResponse.email,
               name: meResponse.name,
             },
@@ -150,20 +147,22 @@ function setupIntercept({
 }
 
 /**
- * Navigate to /elements, wait for initial queries, click an element to
- * navigate to /elements/:id, and wait for the detail data query.
+ * Navigate to /elements, wait for initial queries, click an element to open
+ * the detail overlay, and wait for the detail data query.
  */
 function visitElementDetail(elementOverrides = {}, detailOverrides = {}, meResponse = ME_ADMIN) {
   const element = makeElement(elementOverrides)
   const detail = makeElementDetail(detailOverrides)
   setupIntercept({ meResponse, elements: [element], elementDetail: detail })
   cy.visit('/elements')
+  cy.wait('@gql') // me query
+  cy.wait('@gql') // elements query
   cy.get('.item-text').first().click()
-  cy.url().should('include', '/elements/')
+  cy.wait('@gql') // element(id) detail query
   cy.get('.element-details').should('be.visible')
 }
 
-/** Shorthand to scope selectors to the detail view. */
+/** Shorthand to scope selectors to the detail view (topmost stacked view). */
 function detailView() {
   return cy.get('.view').last()
 }
@@ -182,7 +181,7 @@ describe('Element Detail', () => {
 
   it('back button closes the detail view', () => {
     visitElementDetail()
-    detailView().find('.v-btn.btn-back').click()
+    detailView().find('.v-btn[title="Back to list view"]').click()
     cy.get('.element-details').should('not.exist')
   })
 
@@ -264,12 +263,12 @@ describe('Element Detail', () => {
 
   it('shows history button', () => {
     visitElementDetail()
-    detailView().find('.v-btn.btn-history').should('exist')
+    detailView().find('.v-btn[title="View history"]').should('exist')
   })
 
   it('clicking history button opens history dialog', () => {
     visitElementDetail({}, { latest: { ...makeElementDetail().latest, published: false } })
-    detailView().find('.v-btn.btn-history').click()
+    detailView().find('.v-btn[title="View history"]').click()
     cy.get('.v-dialog').should('be.visible')
   })
 

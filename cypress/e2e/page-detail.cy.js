@@ -1,18 +1,14 @@
 /**
- * E2E tests for the page detail view.
+ * E2E tests for the page detail stacked view.
  *
- * The PageDetail component opens via Vue Router navigation when a page
- * item is clicked in the list (/pages → /pages/:id). The list view is
- * replaced by the detail view inside the same router-view container.
+ * The PageDetail component opens as an overlay on top of the page list
+ * when a page item is clicked. Both views coexist in the DOM (stacked
+ * via z-index), so selectors must be scoped to the detail's .view container.
  *
  * GraphQL is intercepted at POST /graphql. Apollo's BatchHttpLink sends
  * requests as JSON arrays, so the handler checks whether req.body is an
  * array (batched) or an object (single) and replies in the same shape.
  */
-
-Cypress.on('uncaught:exception', (err) => {
-  if (err.message.includes('ResizeObserver')) return false
-})
 
 const ALL_PERMISSIONS = {
   'page:view': true,
@@ -169,9 +165,6 @@ function setupIntercept({
       if (query.includes('synthesize')) {
         return { data: { synthesize: synthesize || 'Generated page content' } }
       }
-      if (query.includes('schemas')) {
-        return { data: { schemas: [] } }
-      }
       // Versions query (contains both 'versions' and 'page(')
       if (query.includes('versions')) {
         return { data: { page: { id: op.variables?.id || '1', versions: pageVersions } } }
@@ -195,8 +188,6 @@ function setupIntercept({
           data: {
             me: {
               permission: meResponse.permission,
-              settings: meResponse.settings || '{}',
-              token: meResponse.token || null,
               email: meResponse.email,
               name: meResponse.name,
             },
@@ -211,20 +202,22 @@ function setupIntercept({
 }
 
 /**
- * Navigate to /pages, wait for initial queries, click a page to navigate
- * to /pages/:id, and wait for the detail data query.
+ * Navigate to /pages, wait for initial queries, click a page to open the
+ * detail overlay, and wait for the detail data query.
  */
 function visitPageDetail(pageOverrides = {}, detailOverrides = {}, meResponse = ME_ADMIN) {
   const page = makePage(pageOverrides)
   const detail = makePageDetail(detailOverrides)
   setupIntercept({ meResponse, pages: [page], pageDetail: detail })
   cy.visit('/pages')
+  cy.wait('@gql') // me query
+  cy.wait('@gql') // pages query
   cy.get('.item-text').first().click()
-  cy.url().should('include', '/pages/')
+  cy.wait('@gql') // page(id) detail query
   cy.get('.page-details').should('be.visible')
 }
 
-/** Shorthand to scope selectors to the detail view. */
+/** Shorthand to scope selectors to the detail view (topmost stacked view). */
 function detailView() {
   return cy.get('.view').last()
 }
@@ -243,8 +236,7 @@ describe('Page Detail', () => {
 
   it('back button closes the detail view', () => {
     visitPageDetail()
-    detailView().find('.v-btn.btn-back').click()
-    cy.url().should('match', /\/pages$/)
+    detailView().find('.v-btn[title="Back to list view"]').click()
     cy.get('.page-details').should('not.exist')
   })
 
@@ -265,17 +257,17 @@ describe('Page Detail', () => {
 
   it('shows schedule publish button', () => {
     visitPageDetail()
-    detailView().find('.menu-publish').should('exist')
+    detailView().find('.menu-publishat').should('exist')
   })
 
   it('shows history button', () => {
     visitPageDetail()
-    detailView().find('.v-btn.btn-history').should('exist')
+    detailView().find('.v-btn[title="View history"]').should('exist')
   })
 
   it('shows translate button when user has text:translate permission', () => {
     visitPageDetail()
-    detailView().find('.btn-translate-page .v-btn').should('exist')
+    detailView().find('.v-btn[title="Translate page"]').should('exist')
   })
 
   it('hides translate button when user lacks text:translate permission', () => {
@@ -289,12 +281,12 @@ describe('Page Detail', () => {
       name: 'Editor',
     }
     visitPageDetail({}, {}, me)
-    detailView().find('.btn-translate-page .v-btn').should('not.exist')
+    detailView().find('.v-btn[title="Translate page"]').should('not.exist')
   })
 
   it('shows aside toggle button', () => {
     visitPageDetail()
-    detailView().find('.v-btn.btn-sidemenu').should('exist')
+    detailView().find('.v-btn[title="Toggle side menu"]').should('exist')
   })
 
   // ---- Tabs ----
@@ -368,7 +360,7 @@ describe('Page Detail', () => {
 
   it('clicking publish fires pubPage mutation for unpublished page', () => {
     visitPageDetail({ latest: { ...makePage().latest, published: false } }, { published: false })
-    detailView().find('.menu-publish').last().click()
+    detailView().find('.menu-publish').click()
     // Wait for the pubPage mutation, skipping any intermediate queries
     function waitForPubPage() {
       return cy.wait('@gql').then((interception) => {
@@ -386,14 +378,14 @@ describe('Page Detail', () => {
   it('schedule publish button opens date picker', () => {
     visitPageDetail({ latest: { ...makePage().latest, published: false } }, { published: false })
     detailView().find('.menu-publishat').click()
-    cy.get('.v-date-picker', { timeout: 5000 }).should('exist')
+    cy.get('.v-date-picker').should('be.visible')
   })
 
   // ---- History ----
 
   it('clicking history button opens history dialog', () => {
     visitPageDetail({}, { published: false })
-    detailView().find('.v-btn.btn-history').click()
+    detailView().find('.v-btn[title="View history"]').click()
     cy.get('.v-dialog').should('be.visible')
   })
 

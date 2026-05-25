@@ -1,5 +1,5 @@
 import PageDetailItemProps from '../../../js/components/PageDetailItemProps.vue'
-import { useAppStore, useUserStore, useSchemaStore } from '../../../js/stores'
+import { useAppStore, useUserStore, useConfigStore } from '../../../js/stores'
 
 const stubs = {
 }
@@ -37,8 +37,8 @@ function mountProps(props = {}, perms = {}) {
   }).then(() => {
     const user = useUserStore()
     user.me = { permission: perms }
-    const schemas = useSchemaStore()
-    schemas.themes = { cms: { types: { page: {} } } }
+    const config = useConfigStore()
+    config.data = { themes: { cms: { types: { page: {} } } } }
     const app = useAppStore()
     app.multidomain = false
   })
