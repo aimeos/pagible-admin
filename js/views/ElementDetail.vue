@@ -164,7 +164,7 @@ export default {
         this.latestId = element.latest?.id
 
         for (const entry of element.latest?.files || element.files || []) {
-          assets[entry.id] = Object.freeze({ ...entry, previews: frozenParse(entry.previews) })
+          assets[entry.id] = { ...entry, previews: frozenParse(entry.previews) }
           files.push(entry.id)
         }
 

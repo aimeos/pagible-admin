@@ -363,12 +363,12 @@ export default {
       const map = {}
 
       for (const entry of entries) {
-        map[entry.id] = Object.freeze({
+        map[entry.id] = {
           ...entry,
           previews: frozenParse(entry.previews),
           description: frozenParse(entry.description),
           transcription: frozenParse(entry.transcription)
-        })
+        }
       }
 
       return map
