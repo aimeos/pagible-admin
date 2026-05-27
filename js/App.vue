@@ -84,7 +84,8 @@ body {
 }
 
 @media (min-width: 960px) {
-  .v-navigation-drawer {
+  .v-navigation-drawer,
+  .v-main {
     transition: none !important;
   }
 }
