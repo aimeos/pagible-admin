@@ -1705,11 +1705,6 @@ msgstr "Canonical URL"
 
 #: js/strings.js:53
 msgctxt "st"
-msgid "robots"
-msgstr "Robots"
-
-#: js/strings.js:54
-msgctxt "st"
 msgid "theme"
 msgstr ""
 
@@ -1812,16 +1807,6 @@ msgstr ""
 msgctxt "fn"
 msgid "url"
 msgstr "URL"
-
-#: js/strings.js:61
-msgctxt "fn"
-msgid "follow"
-msgstr "Link following"
-
-#: js/strings.js:64
-msgctxt "fn"
-msgid "index"
-msgstr "Indexing"
 
 #: js/strings.js:77
 msgctxt "fn"
