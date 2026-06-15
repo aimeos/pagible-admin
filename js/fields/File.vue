@@ -52,7 +52,7 @@ export default {
   emits: ['update:modelValue', 'error', 'addFile', 'removeFile'],
 
   inject: {
-    update: { default: null }
+    reload: { default: null }
   },
 
   data() {
@@ -188,7 +188,7 @@ export default {
       this.viewStack.openView(FileDetail, {
         item: item,
         stacked: true,
-        onSaved: () => this.update?.()
+        onSaved: () => this.reload?.()
       })
     },
 

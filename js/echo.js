@@ -85,14 +85,12 @@ export function cleanEcho(vm) {
 
 export async function subscribe(contentType, contentId, callback) {
   const echo = await getEcho()
-  if (!echo) return null
+  if (!echo || !contentId) return null
 
   activeChannels++
-  // a contentId subscribes to a single item (detail view), otherwise to the
-  // whole content type (list/tree views)
-  const channelName = contentId ? `cms.${contentType}.${contentId}` : `cms.${contentType}`
+  const channelName = `cms.${contentType}.${contentId}`
   const channel = echo.private(channelName)
-  channel.listen('.content.changed', callback)
+  channel.listen('.content.saved', callback)
 
   return () => {
     echo.leave(channelName)
