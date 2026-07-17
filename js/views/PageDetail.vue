@@ -1,4 +1,4 @@
-/** @license LGPL, https://opensource.org/license/lgpl-3-0 */
+/** @license MIT, https://opensource.org/license/mit */
 
 <script>
 import gql from 'graphql-tag'
@@ -12,14 +12,16 @@ const PageDetailEditor = defineAsyncComponent(() => import('../components/PageDe
 import { applyResult, hasUnresolved } from '../merge'
 import { publishDate, publishItem } from '../publish'
 import { defineAsyncComponent, markRaw } from 'vue'
-import { frozenParse, hasTrue, safeParse, sanitize, txlocales } from '../utils'
-import { setupEcho, cleanEcho } from '../echo'
+import { frozenParse, hasTrue, safeParse, txlocales } from '../utils'
+import { setupReload, cleanEcho } from '../echo'
+import { reloadVersion } from '../version'
 import {
   useAppStore,
   useDirtyStore,
   useSideStore,
   useUserStore,
   useMessageStore,
+  usePluginStore,
   useSchemaStore,
   useViewStack,
   useChangeStore
@@ -210,6 +212,10 @@ export default {
 
     saveConfig() {
       return { fcn: this.save, count: this.savecnt }
+    },
+
+    subpanels() {
+      return usePluginStore().subpanels.page || {}
     }
   },
 
@@ -222,62 +228,13 @@ export default {
       return
     }
 
-    this.$apollo
-      .query({
-        query: FETCH_PAGE,
-        fetchPolicy: 'no-cache',
-        variables: {
-          id: this.item.id
-        }
-      })
-      .then((result) => {
-        if (this.destroyed) return
+    this.reload().then((ok) => {
+      if (!ok) return
 
-        if (result.errors || !result.data.page) {
-          throw result
-        }
-
-        if (!result.data.page.latest) {
-          throw new Error('No version data available')
-        }
-
-        this.reset()
-        this.latest = result.data.page.latest
-
-        Object.assign(this.item, safeParse(this.latest?.data))
-        this.item.published = this.latest?.published
-        this.item.editor = this.latest?.editor
-        this.item.updated_at = this.latest?.created_at
-
-        const aux = safeParse(this.latest?.aux)
-        this.item.content = aux.content ?? []
-        this.item.config = aux.config ?? {}
-        this.item.meta = aux.meta ?? {}
-
-        this.assets = markRaw(this.files(this.latest?.files || []))
-        this.elements = markRaw(this.elems(this.latest?.elements || []))
-        this.item.content = this.obsolete(this.item.content)
-        this.latest = { id: this.latest?.id }
-
-        setupEcho(this, 'page', this.item.id, (event) => {
-          if (!this.hasChanged && this.user.can('page:view') && event.editor !== this.user.me?.email) {
-            this.latest = { id: event.versionId }
-            Object.assign(this.item, sanitize(event.data))
-
-            const aux = sanitize(event.aux) || {}
-            this.item.content = aux.content ?? this.item.content
-            this.item.config = aux.config ?? this.item.config
-            this.item.meta = aux.meta ?? this.item.meta
-          }
-        })
-
-        this.loading = false
-      })
-      .catch((error) => {
-        this.loading = false
-        this.messages.add(this.$gettext('Error fetching page') + ':\n' + error, 'error')
-        this.$log(`PageDetail::watch(item): Error fetching page`, error)
-      })
+      // reload the open page when its own item is saved elsewhere or after a reconnect that may
+      // have missed a save, unless the user has unsaved edits
+      setupReload(this, 'page', this.item.id, () => this.reload(), () => !this.hasChanged && this.user.can('page:view'))
+    })
   },
 
   beforeUnmount() {
@@ -296,6 +253,29 @@ export default {
   },
 
   methods: {
+    // loads the latest version into the open editor; resolves true on success so the caller
+    // can defer the websocket subscription until the initial load completed
+    reload() {
+      return reloadVersion(this, FETCH_PAGE, 'page', this.$gettext('Error fetching page'), (page) => {
+        this.latest = page.latest
+
+        Object.assign(this.item, safeParse(this.latest?.data))
+        this.item.published = this.latest?.published
+        this.item.editor = this.latest?.editor
+        this.item.updated_at = this.latest?.created_at
+
+        const aux = safeParse(this.latest?.aux)
+        this.item.content = aux.content ?? []
+        this.item.config = aux.config ?? {}
+        this.item.meta = aux.meta ?? {}
+
+        this.assets = markRaw(this.files(this.latest?.files || []))
+        this.elements = markRaw(this.elems(this.latest?.elements || []))
+        this.item.content = this.obsolete(this.item.content)
+        this.latest = { id: this.latest?.id }
+      }, () => !this.hasChanged)
+    },
+
     apply(changes) {
       if (changes.content) {
         const strip = (el) => {
@@ -525,21 +505,8 @@ export default {
         return Promise.resolve(true)
       }
 
-      const meta = {}
-      for (const key in this.item.meta || {}) {
-        meta[key] = {
-          type: this.item.meta[key].type || '',
-          data: this.item.meta[key].data || {}
-        }
-      }
-
-      const config = {}
-      for (const key in this.item.config || {}) {
-        config[key] = {
-          type: this.item.config[key].type || '',
-          data: this.item.config[key].data || {}
-        }
-      }
+      const meta = this.clean(this.item.meta || {}, 'meta')
+      const config = this.clean(this.item.config || {}, 'config')
 
       this.saving = true
 
@@ -860,6 +827,9 @@ export default {
         <v-tab v-if="user.can('page:metrics')" value="metrics" @click="aside = ''">
           {{ $gettext('Metrics') }}
         </v-tab>
+        <v-tab v-for="(sp, key) in subpanels" :key="key" :value="'ext-' + key" @click="aside = ''">
+          {{ sp.label }}
+        </v-tab>
       </v-tabs>
 
       <v-window v-model="tab" :touch="false">
@@ -898,6 +868,10 @@ export default {
 
         <v-window-item v-if="user.can('page:metrics')" value="metrics">
           <PageDetailMetrics ref="metrics" :item="item" />
+        </v-window-item>
+
+        <v-window-item v-for="(sp, key) in subpanels" :key="key" :value="'ext-' + key">
+          <component :is="sp.component" :item="item" :assets="assets" />
         </v-window-item>
       </v-window>
     </v-form>
