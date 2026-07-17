@@ -1,4 +1,4 @@
-/** @license MIT, https://opensource.org/license/mit */
+/** @license LGPL, https://opensource.org/license/lgpl-3-0 */
 
 <script>
 import gql from 'graphql-tag'
@@ -6,13 +6,12 @@ import AsideMeta from '../components/AsideMeta.vue'
 import DetailAppBar from '../components/DetailAppBar.vue'
 import FileDetailRefs from '../components/FileDetailRefs.vue'
 import FileDetailItem from '../components/FileDetailItem.vue'
-import { useDirtyStore, useSideStore, useUserStore, useMessageStore, usePluginStore, useViewStack, useChangeStore } from '../stores'
+import { useDirtyStore, useSideStore, useUserStore, useMessageStore, useViewStack, useChangeStore } from '../stores'
 import { applyResult, hasUnresolved } from '../merge'
 import { publishDate, publishItem } from '../publish'
 import { defineAsyncComponent, markRaw } from 'vue'
-import { setupReload, cleanEcho } from '../echo'
-import { reloadVersion } from '../version'
-import { frozenParse, safeParse } from '../utils'
+import { setupEcho, cleanEcho } from '../echo'
+import { frozenParse, safeParse, sanitize } from '../utils'
 
 const ChangesDialog = defineAsyncComponent(() => import('../components/ChangesDialog.vue'))
 const HistoryDialog = defineAsyncComponent(() => import('../components/HistoryDialog.vue'))
@@ -118,10 +117,6 @@ export default {
   },
 
   computed: {
-    subpanels() {
-      return usePluginStore().subpanels.file || {}
-    },
-
     hasConflict() {
       return hasUnresolved(this.changed)
     },
@@ -151,13 +146,48 @@ export default {
       return
     }
 
-    this.reload().then((ok) => {
-      if (!ok) return
+    this.$apollo
+      .query({
+        query: FETCH_FILE,
+        fetchPolicy: 'no-cache',
+        variables: {
+          id: this.item.id
+        }
+      })
+      .then((result) => {
+        if (this.destroyed) return
 
-      // reload the open file when its own item is saved elsewhere or after a reconnect that may
-      // have missed a save, unless the user has unsaved edits
-      setupReload(this, 'file', this.item.id, () => this.reload(), () => !this.dirty && this.user.can('file:view'))
-    })
+        if (result.errors || !result.data.file) {
+          throw result
+        }
+
+        if (!result.data.file.latest) {
+          throw new Error('No version data available')
+        }
+
+        const latest = result.data.file.latest
+
+        this.reset()
+        Object.assign(this.item, safeParse(latest?.data))
+        this.item.latestId = latest?.id
+        this.item.published = latest?.published
+        this.item.updated_at = latest?.created_at
+        this.item.editor = latest?.editor
+
+        setupEcho(this, 'file', this.item.id, (event) => {
+          if (!this.dirty && this.user.can('file:view') && event.editor !== this.user.me?.email) {
+            this.item.latestId = event.versionId
+            Object.assign(this.item, sanitize(event.data))
+          }
+        })
+
+        this.loading = false
+      })
+      .catch((error) => {
+        this.loading = false
+        this.messages.add(this.$gettext('Error fetching file') + ':\n' + error, 'error')
+        this.$log(`FileDetail::created(): Error fetching file`, error)
+      })
   },
 
   beforeUnmount() {
@@ -170,20 +200,6 @@ export default {
   },
 
   methods: {
-    // loads the latest version into the open editor; resolves true on success so the caller
-    // can defer the websocket subscription until the initial load completed
-    reload() {
-      return reloadVersion(this, FETCH_FILE, 'file', this.$gettext('Error fetching file'), (file) => {
-        const latest = file.latest
-
-        Object.assign(this.item, safeParse(latest?.data))
-        this.item.latestId = latest?.id
-        this.item.published = latest?.published
-        this.item.updated_at = latest?.created_at
-        this.item.editor = latest?.editor
-      }, () => !this.dirty)
-    },
-
     apply(changes) {
       Object.assign(this.item, changes)
       this.dirty = true
@@ -403,9 +419,6 @@ export default {
           $gettext('File')
         }}</v-tab>
         <v-tab value="refs">{{ $gettext('Used by') }}</v-tab>
-        <v-tab v-for="(sp, key) in subpanels" :key="key" :value="'ext-' + key">
-          {{ sp.label }}
-        </v-tab>
       </v-tabs>
 
       <v-window v-model="tab" :touch="false">
@@ -420,10 +433,6 @@ export default {
 
         <v-window-item value="refs">
           <FileDetailRefs :item="item" />
-        </v-window-item>
-
-        <v-window-item v-for="(sp, key) in subpanels" :key="key" :value="'ext-' + key">
-          <component :is="sp.component" :item="item" />
         </v-window-item>
       </v-window>
     </v-form>

@@ -1,4 +1,4 @@
-/** @license MIT, https://opensource.org/license/mit */
+/** @license LGPL, https://opensource.org/license/lgpl-3-0 */
 
 <script>
 import gql from 'graphql-tag'
@@ -241,7 +241,7 @@ export default {
         return Promise.resolve(this.images[0]?.blob)
       }
 
-      return fetch(this.url(this.item.path, true), {credentials: 'same-origin'}).then((response) => {
+      return fetch(this.url(this.item.path, true), {credentials: 'include'}).then((response) => {
         if (!response.ok) {
           throw new Error('Network error: ' + response.statusText)
         }

@@ -1,4 +1,4 @@
-/** @license MIT, https://opensource.org/license/mit */
+/** @license LGPL, https://opensource.org/license/lgpl-3-0 */
 
 <script>
 import { markRaw } from 'vue'
@@ -17,13 +17,10 @@ import {
   mdiMenuDown,
   mdiSort,
   mdiClockOutline,
-  mdiRefresh,
-  mdiPencil
+  mdiRefresh
 } from '@mdi/js'
-import EditBulkDialog from './EditBulkDialog.vue'
 import { useAppStore, useUserStore, useMessageStore, useChangeStore } from '../stores'
 import { debounce, frozenParse, safeParse, url, srcset } from '../utils'
-import { setupEcho, cleanEcho, listEcho } from '../echo'
 
 const ADD_FILE = gql`
   mutation ($file: Upload!) {
@@ -76,14 +73,6 @@ const PURGE_FILE = gql`
   }
 `
 
-const SAVE_FILES = gql`
-  mutation ($id: [ID!]!, $input: FileInput!) {
-    bulkFile(id: $id, input: $input) {
-      ids
-    }
-  }
-`
-
 const FETCH_FILES = gql`
   query (
     $filter: FileFilter
@@ -132,10 +121,6 @@ const FETCH_FILES = gql`
 `
 
 export default {
-  components: {
-    EditBulkDialog
-  },
-
   props: {
     grid: { type: Boolean, default: false },
     embed: { type: Boolean, default: false },
@@ -155,13 +140,8 @@ export default {
       last: 1,
       limit: 100,
       actions: false,
-      editDialog: false,
       loading: true,
-      vgrid: false,
-      destroyed: false,
-      echoCleanup: null,
-      echoPromise: null,
-      outdated: false
+      vgrid: false
     }
   },
 
@@ -190,7 +170,6 @@ export default {
       mdiSort,
       mdiClockOutline,
       mdiRefresh,
-      mdiPencil,
       debounce,
       url,
       srcset
@@ -201,20 +180,9 @@ export default {
     this.searchd = this.debounce(this.search, 500)
     this.vgrid = this.user.getData('file', 'grid') ?? this.grid
     this.search()
-
-    if (!this.embed) {
-      // patch the matching row when another user changes a file; subscribe for
-      // the whole lifetime (not per activation) so the list keeps patching in
-      // the background while the editor is in a detail or another view and is up
-      // to date when they return
-      setupEcho(this, 'file', (event, name) => listEcho(this, event, name))
-    }
   },
 
   beforeUnmount() {
-    this.destroyed = true
-    cleanEcho(this)
-
     this.items = null
     this.menu = null
     this.checked = null
@@ -227,10 +195,6 @@ export default {
   computed: {
     canTrash() {
       return this.items.some((item) => this.checked.has(item.id) && !item.deleted_at)
-    },
-
-    checkedCount() {
-      return this.checked.size
     },
 
     isChecked() {
@@ -354,7 +318,6 @@ export default {
     },
 
     reload() {
-      this.outdated = false
       this.items = []
       this.loading = true
       this.invalidate()
@@ -375,23 +338,6 @@ export default {
       }
 
       return true
-    },
-
-    patchItems(items) {
-      // index the patches by id so the bulk update is a single pass over the loaded rows
-      const byId = new Map(items.map((item) => [item.id, item]))
-
-      this.items?.forEach((node) => {
-        const item = byId.get(node.id)
-
-        if (item) {
-          for (const key in item) {
-            if (key in node) {
-              node[key] = item[key]
-            }
-          }
-        }
-      })
     },
 
     sync() {
@@ -511,46 +457,6 @@ export default {
         })
     },
 
-    edit() {
-      this.actions = false
-      this.editDialog = true
-    },
-
-    save(lang) {
-      if (!this.user.can('file:save')) {
-        this.messages.add(this.$gettext('Permission denied'), 'error')
-        return
-      }
-
-      const list = this.items.filter((item) => this.checked.has(item.id))
-
-      if (!list.length || lang === null) {
-        return
-      }
-
-      this.$apollo
-        .mutate({
-          mutation: SAVE_FILES,
-          variables: {
-            id: list.map((item) => item.id),
-            input: { lang: lang }
-          }
-        })
-        .then((result) => {
-          if (result.errors) {
-            throw result.errors
-          }
-
-          this.checked = new Set()
-          this.invalidate()
-          this.search()
-        })
-        .catch((error) => {
-          this.messages.add(this.$gettext('Error saving file') + ':\n' + error, 'error')
-          this.$log(`FileListItems::save(): Error saving files`, list, lang, error)
-        })
-    },
-
     setSort(column, order) {
       this.sort = { column, order }
     },
@@ -617,7 +523,7 @@ export default {
               editor: entry.latest?.editor || entry.editor,
               published: entry.latest?.published ?? true,
               publish_at: entry.latest?.publish_at || null,
-              latest_id: entry.latest?.id || null,
+              latestId: entry.latest?.id || null,
               usage: entry.byversions_count
             })
           })
@@ -731,11 +637,6 @@ export default {
                   $gettext('Publish')
                 }}</v-btn>
               </v-list-item>
-              <v-list-item v-if="isChecked && user.can('file:save')">
-                <v-btn :prepend-icon="mdiPencil" variant="text" @click="edit()">{{
-                  $gettext('Edit properties')
-                }}</v-btn>
-              </v-list-item>
               <v-list-item v-if="canTrash && user.can('file:drop')">
                 <v-btn :prepend-icon="mdiDelete" variant="text" @click="drop()">{{
                   $gettext('Delete')
@@ -782,18 +683,6 @@ export default {
     </div>
 
     <div class="layout">
-      <v-btn
-        v-if="outdated"
-        @click="reload()"
-        :prepend-icon="mdiRefresh"
-        :title="$gettext('Updated by another user')"
-        color="primary"
-        variant="tonal"
-        size="small"
-        rounded="lg"
-        class="btn-outdated"
-      >{{ $gettext('Refresh') }}</v-btn>
-
       <v-btn
         @click="reload()"
         :title="$gettext('Reload files')"
@@ -1056,8 +945,6 @@ export default {
       variant="tonal"
     />
   </div>
-
-  <EditBulkDialog v-model="editDialog" :count="checkedCount" @apply="save" />
 </template>
 
 <style scoped>

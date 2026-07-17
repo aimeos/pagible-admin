@@ -1881,27 +1881,27 @@ msgstr "dosya"
 #: js/strings.js:43
 msgctxt "st"
 msgid "hero"
-msgstr "Hero"
+msgstr "kahraman"
 
 #: js/strings.js:44
 msgctxt "st"
 msgid "cards"
-msgstr "Kutucuklar"
+msgstr "kartlar"
 
 #: js/strings.js:45
 msgctxt "st"
 msgid "blog"
-msgstr "Blog"
+msgstr "blog"
 
 #: js/strings.js:46
 msgctxt "st"
 msgid "article"
-msgstr "Yazı"
+msgstr "makale"
 
 #: js/strings.js:47
 msgctxt "st"
 msgid "questions"
-msgstr "SSS"
+msgstr "sorular"
 
 #: js/strings.js:48
 msgctxt "st"
@@ -1926,12 +1926,7 @@ msgstr "sosyal-medya"
 #: js/strings.js:52
 msgctxt "st"
 msgid "canonical"
-msgstr "Kanonik"
-
-#: js/strings.js:53
-msgctxt "st"
-msgid "robots"
-msgstr "Robots"
+msgstr "kanonik"
 
 #: js/strings.js:53
 msgctxt "st"
@@ -1953,10 +1948,10 @@ msgctxt "fn"
 msgid "button"
 msgstr "düğme"
 
-#: js/strings.js:60
+#: js/strings.js:59
 msgctxt "fn"
 msgid "cards"
-msgstr "Kutucuklar"
+msgstr "kartlar"
 
 #: js/strings.js:60
 msgctxt "fn"
@@ -1973,20 +1968,10 @@ msgctxt "fn"
 msgid "files"
 msgstr "dosyalar"
 
-#: js/strings.js:64
-msgctxt "fn"
-msgid "follow"
-msgstr "Follow"
-
 #: js/strings.js:63
 msgctxt "fn"
 msgid "header"
 msgstr "başlık"
-
-#: js/strings.js:66
-msgctxt "fn"
-msgid "index"
-msgstr "Index"
 
 #: js/strings.js:64
 msgctxt "fn"
@@ -2008,10 +1993,10 @@ msgctxt "fn"
 msgid "limit"
 msgstr "limit"
 
-#: js/strings.js:71
+#: js/strings.js:68
 msgctxt "fn"
 msgid "main"
-msgstr "Ana görsel"
+msgstr "ana"
 
 #: js/strings.js:69
 msgctxt "fn"

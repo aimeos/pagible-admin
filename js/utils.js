@@ -1,5 +1,5 @@
 /**
- * @license MIT, https://opensource.org/license/mit
+ * @license LGPL, https://opensource.org/license/lgpl-3-0
  */
 
 import gettext from './i18n'
@@ -16,17 +16,16 @@ export const MEDIA_MIME_FILTER = { mime: ['image/gif', 'image/jpeg', 'image/png'
 const UNSAFE_KEYS = ['__proto__', 'constructor', 'prototype']
 
 /**
- * Creates a debounced version of a function that returns a Promise. The returned function
- * exposes a cancel() method that clears any pending invocation.
+ * Creates a debounced version of a function that returns a Promise
  *
  * @param {Function} func Function to debounce
  * @param {number} delay Delay in milliseconds
- * @returns {Function} Debounced function (with a cancel() method) that returns a Promise
+ * @returns {Function} Debounced function that returns a Promise
  */
 export function debounce(func, delay) {
   let timer
 
-  function debounced(...args) {
+  return function (...args) {
     return new Promise((resolve, reject) => {
       const context = this
 
@@ -40,10 +39,6 @@ export function debounce(func, delay) {
       }, delay)
     })
   }
-
-  debounced.cancel = () => clearTimeout(timer)
-
-  return debounced
 }
 
 /**
@@ -82,15 +77,13 @@ export function frozenParse(str) {
  * Object.assign) without altering their prototype chain.
  *
  * @param {string} str JSON string to parse
- * @param {*} fallback Value returned when the string is empty or parsing fails (default: {})
+ * @param {*} fallback Value returned when parsing fails (default: {})
  * @returns {*} Parsed value with unsafe keys removed
  */
 export function safeParse(str, fallback = {}) {
   try {
-    // Empty input parses to null so it yields the caller's fallback (e.g. ['en']) rather
-    // than {}; for the default {} fallback this is identical (null ?? {} === {}).
     return (
-      JSON.parse(str || 'null', (key, value) =>
+      JSON.parse(str || '{}', (key, value) =>
         UNSAFE_KEYS.includes(key) ? undefined : value
       ) ?? fallback
     )
@@ -399,31 +392,6 @@ const uid = (function () {
 })()
 
 export { uid }
-
-/**
- * Returns the CSRF header derived from Laravel's XSRF-TOKEN cookie for cookie-authenticated
- * requests, or an empty object when the cookie is absent. Used directly by Apollo's csrfLink and
- * (via postHeaders) by raw fetch POSTs, so the cookie/header contract lives in one place.
- *
- * @returns {Object} { 'X-XSRF-TOKEN': token } or {}
- */
-export function xsrfHeaders() {
-  const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/)
-
-  return match ? { 'X-XSRF-TOKEN': decodeURIComponent(match[1]) } : {}
-}
-
-/**
- * Returns the request headers for a cookie-authenticated JSON POST: content negotiation plus the
- * CSRF token header. Keeps the header contract for raw fetch() calls in one place (builds on
- * xsrfHeaders so a future CSRF-contract change is made once).
- *
- * @param {string} accept Value for the Accept header (e.g. 'text/plain' for a streamed response)
- * @returns {Object} request headers
- */
-export function postHeaders(accept = 'application/json') {
-  return { 'Content-Type': 'application/json', Accept: accept, ...xsrfHeaders() }
-}
 
 /**
  * Resolves a file path to a full URL using the app's file or proxy URL

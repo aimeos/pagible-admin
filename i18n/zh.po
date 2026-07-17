@@ -6,7 +6,6 @@ msgstr ""
 "Language-Team: none\n"
 "Last-Translator: Automatically generated\n"
 "MIME-Version: 1.0\n"
-"Plural-Forms: nplurals=1; plural=0;\n"
 "Project-Id-Version: PACKAGE VERSION\n"
 
 #: js/ai.js:44
@@ -1170,6 +1169,7 @@ msgstr "无缓存"
 msgid "%{num} minute"
 msgid_plural "%{num} minutes"
 msgstr[0] "%{num} 分钟"
+msgstr[1] ""
 
 #: js/components/PageDetailItemProps.vue:61
 #: js/components/PageDetailItemProps.vue:62
@@ -1179,6 +1179,7 @@ msgstr[0] "%{num} 分钟"
 msgid "%{num} hour"
 msgid_plural "%{num} hours"
 msgstr[0] "%{num} 小时"
+msgstr[1] ""
 
 #: js/components/PageDetailItemProps.vue:68
 #: js/views/PageList.vue:165
@@ -1879,12 +1880,12 @@ msgstr "文件"
 #: js/strings.js:43
 msgctxt "st"
 msgid "hero"
-msgstr "首屏"
+msgstr "英雄"
 
 #: js/strings.js:44
 msgctxt "st"
 msgid "cards"
-msgstr "磁贴"
+msgstr "卡片"
 
 #: js/strings.js:45
 msgctxt "st"
@@ -1894,12 +1895,12 @@ msgstr "博客"
 #: js/strings.js:46
 msgctxt "st"
 msgid "article"
-msgstr "文章"
+msgstr "条"
 
 #: js/strings.js:47
 msgctxt "st"
 msgid "questions"
-msgstr "FAQ"
+msgstr "问题"
 
 #: js/strings.js:48
 msgctxt "st"
@@ -1924,12 +1925,7 @@ msgstr "社交媒体"
 #: js/strings.js:52
 msgctxt "st"
 msgid "canonical"
-msgstr "规范"
-
-#: js/strings.js:53
-msgctxt "st"
-msgid "robots"
-msgstr "Robots"
+msgstr "典型"
 
 #: js/strings.js:53
 msgctxt "st"
@@ -1951,10 +1947,10 @@ msgctxt "fn"
 msgid "button"
 msgstr "按钮"
 
-#: js/strings.js:60
+#: js/strings.js:59
 msgctxt "fn"
 msgid "cards"
-msgstr "磁贴"
+msgstr "卡片"
 
 #: js/strings.js:60
 msgctxt "fn"
@@ -1971,20 +1967,10 @@ msgctxt "fn"
 msgid "files"
 msgstr "文件"
 
-#: js/strings.js:64
-msgctxt "fn"
-msgid "follow"
-msgstr "Follow"
-
 #: js/strings.js:63
 msgctxt "fn"
 msgid "header"
 msgstr "页眉"
-
-#: js/strings.js:66
-msgctxt "fn"
-msgid "index"
-msgstr "索引"
 
 #: js/strings.js:64
 msgctxt "fn"
@@ -2006,10 +1992,10 @@ msgctxt "fn"
 msgid "limit"
 msgstr "限额"
 
-#: js/strings.js:71
+#: js/strings.js:68
 msgctxt "fn"
 msgid "main"
-msgstr "主图"
+msgstr "主要"
 
 #: js/strings.js:69
 msgctxt "fn"

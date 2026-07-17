@@ -1,6 +1,7 @@
-/** @license MIT, https://opensource.org/license/mit */
+/** @license LGPL, https://opensource.org/license/lgpl-3-0 */
 
 <script>
+import gql from 'graphql-tag'
 import {
   mdiPlaylistCheck,
   mdiTranslate,
@@ -21,6 +22,7 @@ import {
   mdiClockAlertOutline,
   mdiAccount,
   mdiHelpCircleOutline,
+  mdiCheckBold,
   mdiArrowRightCircle,
   mdiMicrophone,
   mdiMicrophoneOutline
@@ -30,9 +32,14 @@ import User from '../components/User.vue'
 import AsideList from '../components/AsideList.vue'
 import Navigation from '../components/Navigation.vue'
 import PageListItems from '../components/PageListItems.vue'
-import ChatDialog from '../components/ChatDialog.vue'
 import { useUserStore, useDrawerStore, useMessageStore } from '../stores'
 import { languageFilter } from '../utils'
+
+const SYNTHESIZE = gql`
+  mutation ($prompt: String!) {
+    synthesize(prompt: $prompt)
+  }
+`
 
 export default {
   name: 'PageList',
@@ -41,7 +48,6 @@ export default {
     PageListItems,
     Navigation,
     AsideList,
-    ChatDialog,
     User
   },
 
@@ -58,10 +64,11 @@ export default {
 
     return {
       chat: '',
-      chatOpen: false,
-      chatPending: false,
+      response: '',
       audio: null,
       help: false,
+      shortmsg: true,
+      synthesizing: false,
       dictating: false,
       defaults: defaults,
       filter: { ...defaults, ...this.user?.getData('page', 'filter') }
@@ -73,15 +80,7 @@ export default {
       deep: true,
       handler(val) {
         this.user.saveData('page', 'filter', val)
-      }
-    },
-
-    chatOpen(val) {
-      // Refresh the list once when the chat closes after a turn (it may have created/changed pages).
-      // Reload the current filter rather than overwriting the editor's saved filter.
-      if (!val && this.chatPending) {
-        this.chatPending = false
-        this.$refs.pagelist?.reload()
+        this.response = ''
       }
     }
   },
@@ -114,6 +113,7 @@ export default {
       mdiClockAlertOutline,
       mdiAccount,
       mdiHelpCircleOutline,
+      mdiCheckBold,
       mdiArrowRightCircle,
       mdiMicrophone,
       mdiMicrophoneOutline,
@@ -187,39 +187,24 @@ export default {
           items: languageFilter(mdiPlaylistCheck, mdiTranslate)
         }
       ]
+    },
+
+    message() {
+      if (!this.response) {
+        return this.chat
+      }
+
+      const idx = this.response.indexOf(`\n---\n`)
+
+      return this.shortmsg
+        ? this.$pgettext('ai', this.response.slice(0, idx))
+        : this.response.substring(idx > 0 ? idx + 5 : 0)
     }
   },
 
   methods: {
-    chatDone() {
-      this.chatPending = true // a turn completed; reload the list when the dialog closes
-    },
-
-    onEnter(e) {
-      if (e.isComposing || e.shiftKey) {
-        return // let IME compose, and Shift+Enter insert a newline instead of opening the chat
-      }
-      e.preventDefault()
-      this.openChat()
-    },
-
     open(item) {
       this.$router.push({ name: 'page:detail', params: { id: item.id } })
-    },
-
-    openChat() {
-      if (!this.user.can('page:chat')) {
-        this.messages.add(this.$gettext('Permission denied'), 'error')
-        return
-      }
-
-      const prompt = this.chat.trim()
-      this.chatOpen = true
-
-      if (prompt) {
-        this.chat = ''
-        this.$nextTick(() => this.$refs.chat?.send(prompt))
-      }
     },
 
     record() {
@@ -242,6 +227,82 @@ export default {
             })
         })
       })
+    },
+
+    same(item1, item2) {
+      if (!item1 || !item2) {
+        return false
+      }
+
+      const keys1 = Object.keys(item1)
+      const keys2 = Object.keys(item2)
+
+      return keys1.length === keys2.length && keys1.every((key) => item1[key] === item2[key])
+    },
+
+    synthesize() {
+      if (!this.user.can('page:synthesize')) {
+        this.messages.add(this.$gettext('Permission denied'), 'error')
+        return
+      }
+
+      const prompt = this.chat.trim()
+
+      if (!this.chat) {
+        return
+      }
+
+      this.synthesizing = true
+
+      this.$apollo
+        .mutate({
+          mutation: SYNTHESIZE,
+          variables: {
+            prompt: prompt
+          }
+        })
+        .then((result) => {
+          if (result.errors) {
+            throw result
+          }
+
+          this.response = result.data?.synthesize || ''
+          this.shortmsg = true
+          this.chat = this.message
+
+          const filter = {
+            view: 'list',
+            publish: 'DRAFT',
+            trashed: 'WITHOUT',
+            editor: this.user.me?.email,
+            cache: null,
+            lang: null,
+            status: 0
+          }
+
+          // compare current filter to check reload is required
+          if (this.same(filter, this.filter)) {
+            this.$refs.pagelist.reload()
+          } else {
+            this.filter = filter
+          }
+
+          this.synthesizing = null
+        })
+        .catch((error) => {
+          this.messages.add(this.$gettext('Error synthesizing content') + ':\n' + error, 'error')
+          this.$log(`PageDetailContentList::synthesize(): Error synthesizing content`, error)
+        })
+        .finally(() => {
+          setTimeout(() => {
+            this.synthesizing = false
+          }, 3000)
+        })
+    },
+
+    toggleChat() {
+      this.shortmsg = !this.shortmsg
+      this.chat = this.message
     }
   }
 }
@@ -279,16 +340,18 @@ export default {
     <v-container>
       <v-sheet class="box scroll">
         <v-textarea
-          v-if="user.can('page:chat')"
+          v-if="user.can('page:synthesize')"
           v-model="chat"
-          :placeholder="$gettext('What shall I do for you?') + ' ' + $gettext('Press Enter to open the chat')"
-          @keydown.enter="onEnter"
+          :loading="synthesizing"
+          :placeholder="$gettext('Describe the page and content you want to create')"
+          @dblclick="toggleChat"
           variant="outlined"
           class="prompt"
           rounded="lg"
           hide-details
           auto-grow
           clearable
+          outlined
           rows="1"
         >
           <template #prepend>
@@ -304,9 +367,21 @@ export default {
           <template #append>
             <v-btn
               v-if="chat"
-              @click="openChat()"
-              :icon="mdiArrowRightCircle"
-              :title="$gettext('Generate page based on prompt')"
+              @click="synthesizing || synthesize()"
+              @keydown.enter="synthesizing || synthesize()"
+              :icon="
+                synthesizing === false
+                  ? mdiArrowRightCircle
+                  : synthesizing === null
+                    ? mdiCheckBold
+                    : null
+              "
+              :title="
+                synthesizing
+                  ? $gettext('Generating ...')
+                  : $gettext('Generate page based on prompt')
+              "
+              :loading="synthesizing"
               variant="text"
             />
             <v-btn
@@ -331,7 +406,7 @@ export default {
             </li>
             <li>
               {{
-                $gettext('Press Enter or the arrow to open the AI assistant and refine in a chat')
+                $gettext('Double click on the response in the input field to display full response')
               }}
             </li>
           </ul>
@@ -347,8 +422,6 @@ export default {
     :defaults="defaults"
     :content="asideContent"
   />
-
-  <ChatDialog ref="chat" v-model="chatOpen" @done="chatDone" />
 </template>
 
 <style scoped>

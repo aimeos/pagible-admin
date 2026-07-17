@@ -1,10 +1,10 @@
-/** @license MIT, https://opensource.org/license/mit */
+/** @license LGPL, https://opensource.org/license/lgpl-3-0 */
 
 <script>
 import Fields from './Fields.vue'
 import SchemaItems from './SchemaItems.vue'
 import { useUserStore, useMessageStore, useSchemaStore, useSideStore } from '../stores'
-import { hasProp, itemTitle } from '../utils'
+import { hasProp, itemTitle, uid } from '../utils'
 import { mdiPencil, mdiDelete, mdiViewGridPlus } from '@mdi/js'
 
 export default {
@@ -61,11 +61,7 @@ export default {
         return
       }
 
-      this.item[this.section][item.type] = {
-        type: item.type,
-        data: {},
-        files: []
-      }
+      this.item[this.section][item.type] = { id: uid(), type: item.type, data: {} }
       this.panel.push(Object.keys(this.item[this.section]).length - 1)
       this.vschemas = false
     },

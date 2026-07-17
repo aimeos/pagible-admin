@@ -1883,27 +1883,27 @@ msgstr "failas"
 #: js/strings.js:43
 msgctxt "st"
 msgid "hero"
-msgstr "Hero"
+msgstr "herojus"
 
 #: js/strings.js:44
 msgctxt "st"
 msgid "cards"
-msgstr "Plytelės"
+msgstr "kortelės"
 
 #: js/strings.js:45
 msgctxt "st"
 msgid "blog"
-msgstr "Blogas"
+msgstr "tinklaraštis"
 
 #: js/strings.js:46
 msgctxt "st"
 msgid "article"
-msgstr "Straipsnis"
+msgstr "straipsnis"
 
 #: js/strings.js:47
 msgctxt "st"
 msgid "questions"
-msgstr "DUK"
+msgstr "klausimai"
 
 #: js/strings.js:48
 msgctxt "st"
@@ -1928,12 +1928,7 @@ msgstr "socialinė žiniasklaida"
 #: js/strings.js:52
 msgctxt "st"
 msgid "canonical"
-msgstr "Kanoninis"
-
-#: js/strings.js:53
-msgctxt "st"
-msgid "robots"
-msgstr "Robotai"
+msgstr "kanoninis"
 
 #: js/strings.js:53
 msgctxt "st"
@@ -1955,10 +1950,10 @@ msgctxt "fn"
 msgid "button"
 msgstr "Mygtukas"
 
-#: js/strings.js:60
+#: js/strings.js:59
 msgctxt "fn"
 msgid "cards"
-msgstr "Plytelės"
+msgstr "kortelės"
 
 #: js/strings.js:60
 msgctxt "fn"
@@ -1975,20 +1970,10 @@ msgctxt "fn"
 msgid "files"
 msgstr "failai"
 
-#: js/strings.js:64
-msgctxt "fn"
-msgid "follow"
-msgstr "Follow"
-
 #: js/strings.js:63
 msgctxt "fn"
 msgid "header"
 msgstr "antraštė"
-
-#: js/strings.js:66
-msgctxt "fn"
-msgid "index"
-msgstr "Index"
 
 #: js/strings.js:64
 msgctxt "fn"
@@ -2010,10 +1995,10 @@ msgctxt "fn"
 msgid "limit"
 msgstr "riba"
 
-#: js/strings.js:71
+#: js/strings.js:68
 msgctxt "fn"
 msgid "main"
-msgstr "Pagr. vaizdas"
+msgstr "Pagrindinis"
 
 #: js/strings.js:69
 msgctxt "fn"

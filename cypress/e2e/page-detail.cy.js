@@ -130,6 +130,7 @@ function setupIntercept({
   keepPage = null,
   purgePage = null,
   pubPage = null,
+  synthesize = null,
 } = {}) {
   cy.intercept('POST', '/graphql', (req) => {
     const isBatch = Array.isArray(req.body)
@@ -164,6 +165,9 @@ function setupIntercept({
       }
       if (query.includes('pubPage')) {
         return { data: { pubPage: pubPage || { id: '1' } } }
+      }
+      if (query.includes('synthesize')) {
+        return { data: { synthesize: synthesize || 'Generated page content' } }
       }
       if (query.includes('schemas')) {
         return { data: { schemas: [] } }
