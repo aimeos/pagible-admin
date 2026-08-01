@@ -3,9 +3,9 @@
  */
 
 import gql from 'graphql-tag'
-import { frozenParse } from './utils'
+import { safeParse, sanitize } from './utils'
 
-const FILE_FIELDS = gql`
+export const FILE_FIELDS = gql`
   fragment CmsFileFields on File {
     disk
     id
@@ -20,6 +20,10 @@ const FILE_FIELDS = gql`
     created_at
     updated_at
     deleted_at
+    latest {
+      data
+      aux
+    }
   }
 `
 
@@ -57,11 +61,21 @@ export const FETCH_FILE_DISKS = gql`
 `
 
 export function normalizeFile(data = {}) {
-  for (const field of ['previews', 'description', 'transcription']) {
-    data[field] = frozenParse(data[field])
+  const parse = (value) => typeof value === 'string' ? safeParse(value) : sanitize(value || {})
+  const item = {
+    ...data,
+    ...parse(data.latest?.data),
+    ...parse(data.latest?.aux),
+    disk: data.disk,
+    id: data.id
   }
 
-  delete data.__typename
+  for (const field of ['previews', 'description', 'transcription']) {
+    item[field] = Object.freeze(parse(item[field]))
+  }
 
-  return data
+  delete item.__typename
+  delete item.latest
+
+  return item
 }
