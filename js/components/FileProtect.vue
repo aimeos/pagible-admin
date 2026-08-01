@@ -95,7 +95,6 @@ export default {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 0 16px;
   gap: 16px;
 }
 
