@@ -43,6 +43,19 @@ export const RELOCATE_FILE = gql`
   }
 `
 
+export const FETCH_FILE_DISKS = gql`
+  query ($id: [ID!]!) {
+    files(filter: { id: $id }, first: 100) {
+      data {
+        disk
+        id
+        editor
+        updated_at
+      }
+    }
+  }
+`
+
 export function normalizeFile(data = {}) {
   for (const field of ['previews', 'description', 'transcription']) {
     data[field] = frozenParse(data[field])
