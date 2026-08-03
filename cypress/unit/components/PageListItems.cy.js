@@ -95,6 +95,40 @@ describe('PageListItems', () => {
     cy.get('.btn-sort button').should('exist')
   })
 
+  it('shows edited first and last sort options in list view', () => {
+    mountList({ filter: { view: 'list' } }, { 'page:view': true })
+    cy.get('.btn-sort button').click()
+    cy.get('.v-overlay').should('contain', 'Edited last').and('contain', 'Edited first')
+  })
+
+  it('sorts the list by first and last modification', () => {
+    const query = cy.stub().resolves({
+      data: { pages: { data: [], paginatorInfo: { currentPage: 1, lastPage: 1 } } }
+    })
+
+    mountList({ filter: { view: 'list' } }, { 'page:view': true }, { query }).then(({ wrapper }) => {
+      const vm = wrapper.findComponent(PageListItems).vm
+
+      vm.setSort('LATEST_ID', 'DESC')
+
+      return vm.$nextTick().then(() => {
+        expect(vm.order).to.equal('Edited last')
+        expect(query.lastCall.args[0].variables.sort).to.deep.equal([
+          { column: 'LATEST_ID', order: 'DESC' }
+        ])
+
+        vm.setSort('LATEST_ID', 'ASC')
+
+        return vm.$nextTick().then(() => {
+          expect(vm.order).to.equal('Edited first')
+          expect(query.lastCall.args[0].variables.sort).to.deep.equal([
+            { column: 'LATEST_ID', order: 'ASC' }
+          ])
+        })
+      })
+    })
+  })
+
   it('loads the saved list view with its active filters', () => {
     const query = cy.stub().resolves({
       data: { pages: { data: [], paginatorInfo: { currentPage: 1, lastPage: 1 } } }
@@ -201,7 +235,7 @@ describe('PageListItems', () => {
   })
 
   it('opens access editing for selected pages', () => {
-    mountList({}, { 'access:view': true, 'page:publish': true, 'page:view': true }).then(({ wrapper }) => {
+    mountList({}, { 'page:access': true, 'page:view': true }).then(({ wrapper }) => {
       const vm = wrapper.findComponent(PageListItems).vm
       vm.$refs.tree.statsFlat = [{ _checked: true, data: { id: 'page-1', has: 2 } }]
       vm.editAccess()
@@ -213,7 +247,7 @@ describe('PageListItems', () => {
   })
 
   it('opens bulk editing and access control for one page node', () => {
-    mountList({}, { 'access:view': true, 'page:publish': true, 'page:save': true, 'page:view': true }).then(({ wrapper }) => {
+    mountList({}, { 'page:access': true, 'page:save': true, 'page:view': true }).then(({ wrapper }) => {
       const vm = wrapper.findComponent(PageListItems).vm
       const node = { _checked: false, data: { id: 'page-1', has: 2 } }
       const selected = { _checked: true, data: { id: 'page-2', has: 0 } }
@@ -234,7 +268,7 @@ describe('PageListItems', () => {
   })
 
   it('updates access indicators for one page node and its descendants', () => {
-    mountList({}, { 'access:view': true, 'page:publish': true, 'page:view': true }).then(({ wrapper }) => {
+    mountList({}, { 'page:access': true, 'page:view': true }).then(({ wrapper }) => {
       const vm = wrapper.findComponent(PageListItems).vm
       const root = { _checked: false, data: { id: 'page-1', access: null, restricted: false } }
       const child = { _checked: false, data: { id: 'page-2', access: null, restricted: false }, parent: root }

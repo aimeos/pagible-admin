@@ -373,6 +373,24 @@ export default {
         this.isChecked &&
         this.$refs.tree?.statsFlat.some((stat) => stat._checked && stat.data.deleted_at)
       )
+    },
+
+    order() {
+      if (this.sort?.column === 'ID') {
+        return this.sort?.order === 'DESC' ? this.$gettext('latest') : this.$gettext('oldest')
+      }
+
+      if (this.sort?.column === 'LATEST_ID') {
+        return this.sort?.order === 'DESC' ? this.$gettext('Edited last') : this.$gettext('Edited first')
+      }
+
+      const labels = {
+        EDITOR: this.$gettext('editor'),
+        LFT: this.$gettext('tree'),
+        NAME: this.$gettext('name')
+      }
+
+      return labels[this.sort?.column] || this.sort?.column || ''
     }
   },
 
@@ -682,7 +700,7 @@ export default {
             limit: limit,
             trashed: trashed,
             publish: publish,
-            access: this.user.can('access:view')
+            access: this.user.can('page:access')
           }
         })
         .then((result) => {
@@ -1011,7 +1029,7 @@ export default {
                 },
                 parent: parent ? parent.data.id : null,
                 ref: refid,
-                access: this.user.can('access:view')
+                access: this.user.can('page:access')
               }
             })
             .then((result) => {
@@ -1341,7 +1359,7 @@ export default {
             limit: limit,
             trashed: trashed,
             publish: publish,
-            access: this.user.can('access:view')
+            access: this.user.can('page:access')
           }
         })
         .then((result) => {
@@ -1571,7 +1589,7 @@ export default {
                   $gettext('Edit properties')
                 }}</v-btn>
               </v-list-item>
-              <v-list-item v-if="isChecked && user.can('page:publish') && user.can('access:view')">
+              <v-list-item v-if="isChecked && user.can('page:access')">
                 <v-btn :prepend-icon="mdiKeyVariant" variant="text" @click="editAccess()">{{
                   $gettext('Access')
                 }}</v-btn>
@@ -1653,13 +1671,7 @@ export default {
             :prepend-icon="mdiSort"
             variant="text"
           >
-            {{
-              sort?.column === 'ID'
-                ? sort?.order === 'DESC'
-                  ? $gettext('latest')
-                  : $gettext('oldest')
-                : $gettext('tree')
-            }}
+            {{ order }}
           </v-btn>
         </template>
         <v-list>
@@ -1676,6 +1688,16 @@ export default {
           <v-list-item>
             <v-btn variant="text" @click="setSort('ID', 'ASC')">{{
               $gettext('oldest')
+            }}</v-btn>
+          </v-list-item>
+          <v-list-item>
+            <v-btn variant="text" @click="setSort('LATEST_ID', 'DESC')">{{
+              $gettext('Edited last')
+            }}</v-btn>
+          </v-list-item>
+          <v-list-item>
+            <v-btn variant="text" @click="setSort('LATEST_ID', 'ASC')">{{
+              $gettext('Edited first')
             }}</v-btn>
           </v-list-item>
           <v-list-item>
@@ -1782,7 +1804,7 @@ export default {
                     $gettext('Edit properties')
                   }}</v-btn>
                 </v-list-item>
-                <v-list-item v-if="user.can('page:publish') && user.can('access:view')">
+                <v-list-item v-if="user.can('page:access')">
                   <v-btn :prepend-icon="mdiKeyVariant" variant="text" @click="editAccess(stat)">{{
                     $gettext('Access')
                   }}</v-btn>
