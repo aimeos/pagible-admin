@@ -2,7 +2,7 @@
 
 <script>
 import gql from 'graphql-tag'
-import { mdiMagnify } from '@mdi/js'
+import { mdiAccountPlus, mdiContentSave, mdiMagnify } from '@mdi/js'
 import { apolloClient } from '../graphql'
 import { useMessageStore, useUserStore } from '../stores'
 
@@ -163,6 +163,14 @@ export default {
 
     hasBackendRoleChanges() {
       return !this.selectionEqual(this.backendRoleDraft, this.permissionRole)
+    },
+
+    canSaveRoleChanges() {
+      return (this.canAccess && this.hasFrontendRoleChanges) || (this.canPermission && this.hasBackendRoleChanges)
+    },
+
+    savingRoleChanges() {
+      return this.savingAccess || this.savingPermissions
     }
   },
 
@@ -247,12 +255,22 @@ export default {
       return this.change('permissions', values, SET_USER_PERMISSIONS)
     },
 
-    applyAccessRoles() {
-      return this.changeAccess(this.frontendRoleDraft)
-    },
+    async applyRoleChanges() {
+      const promises = []
 
-    applyPermissionRoles() {
-      return this.changePermissionRole(this.backendRoleDraft)
+      if (this.canAccess && this.hasFrontendRoleChanges) {
+        promises.push(this.changeAccess(this.frontendRoleDraft))
+      }
+
+      if (this.canPermission && this.hasBackendRoleChanges) {
+        promises.push(this.changePermissionRole(this.backendRoleDraft))
+      }
+
+      if (!promises.length) {
+        return
+      }
+
+      await Promise.all(promises)
     },
 
     changePermissionRole(roles) {
@@ -371,11 +389,24 @@ export default {
 <template>
   <div class="access-users">
     <div class="header">
+      <div class="bulk">
+        <v-btn
+          type="button"
+          :icon="mdiAccountPlus"
+          color="primary"
+          variant="tonal"
+          :disabled="!canCreate || creating || loadingUser || !emailValid"
+          :loading="creating"
+          @click="createUser"
+          :title="$gettext('Create user')"
+          :aria-label="$gettext('Create user')"
+        />
+      </div>
+
       <v-form id="user-search-form" class="search" @submit.prevent="search()">
         <v-text-field
           v-model="email"
           type="email"
-          :prepend-inner-icon="mdiMagnify"
           variant="underlined"
           :label="$gettext('Email address')"
           maxlength="255"
@@ -387,27 +418,27 @@ export default {
 
       <div class="layout">
         <v-btn
-          v-if="canManage"
           type="submit"
           form="user-search-form"
+          :icon="mdiMagnify"
           color="primary"
           variant="tonal"
-          :disabled="loadingUser || creating || !emailValid"
+          :disabled="!canManage || loadingUser || creating || !emailValid"
           :loading="loadingUser"
-        >
-          {{ $gettext('Search') }}
-        </v-btn>
+          :title="$gettext('Search')"
+          :aria-label="$gettext('Search')"
+        />
         <v-btn
-          v-if="canCreate"
-          type="button"
+          v-if="canAccess || canPermission"
           color="primary"
           variant="tonal"
-          :disabled="creating || loadingUser || !emailValid"
-          :loading="creating"
-          @click="createUser"
-        >
-          {{ $gettext('Create user') }}
-        </v-btn>
+          :icon="mdiContentSave"
+          :disabled="!result || !canSaveRoleChanges || savingRoleChanges || rolesLoading || loadingPermissions"
+          :loading="savingRoleChanges"
+          @click="applyRoleChanges"
+          :title="$gettext('Save')"
+          :aria-label="$gettext('Save')"
+        />
       </div>
     </div>
 
@@ -437,16 +468,6 @@ export default {
           hide-details
           @update:model-value="changeAccessDraft"
         />
-        <v-btn
-          color="primary"
-          variant="tonal"
-          size="small"
-          :disabled="!hasFrontendRoleChanges || savingAccess || rolesLoading"
-          :loading="savingAccess"
-          @click="applyAccessRoles"
-        >
-          {{ $gettext('Apply') }}
-        </v-btn>
       </section>
 
       <section v-if="canPermission" class="assignment assigned-permissions">
@@ -469,16 +490,6 @@ export default {
           hide-details
           @update:model-value="changePermissionRoleDraft"
         />
-        <v-btn
-          color="primary"
-          variant="tonal"
-          size="small"
-          :disabled="!hasBackendRoleChanges || savingPermissions || loadingPermissions"
-          :loading="savingPermissions"
-          @click="applyPermissionRoles"
-        >
-          {{ $gettext('Apply') }}
-        </v-btn>
       </section>
     </div>
 
