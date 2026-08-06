@@ -415,6 +415,7 @@ export default {
         <v-text-field
           v-model="email"
           :label="$gettext('Email address')"
+          variant="underlined"
           :maxlength="255"
           hide-details
           :disabled="loadingUser || creating"

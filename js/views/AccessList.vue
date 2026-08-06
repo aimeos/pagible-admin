@@ -245,7 +245,7 @@ export default {
   <v-main class="access-list" :aria-label="$gettext('Access')">
     <v-container>
       <v-sheet class="box scroll">
-        <v-tabs v-if="tabNames.length" fixed-tabs v-model="activeTab">
+        <v-tabs v-if="tabNames.length" fixed-tabs v-model="activeTab" class="subtabs">
           <v-tab value="roles">{{ $gettext('Roles') }}</v-tab>
           <v-tab value="users">{{ $gettext('Users') }}</v-tab>
         </v-tabs>
@@ -418,5 +418,9 @@ export default {
 
 .warning p {
   margin: 0;
+}
+
+.subtabs {
+  margin-bottom: 16px;
 }
 </style>
