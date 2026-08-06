@@ -120,6 +120,7 @@ export default {
     permissionGroups() {
       const permissions = new Set([...this.permissionOptions.permissions, ...(this.result?.permissions || [])])
       const groups = {}
+      const preferredOrder = ['page', 'element', 'file', 'image', 'text', 'audio', 'video']
 
       for (const permission of permissions) {
         if (typeof permission !== 'string') continue
@@ -137,12 +138,26 @@ export default {
         groups[prefix].add(permission)
       }
 
-      return Object.entries(groups)
+      const ordered = []
+
+      preferredOrder.forEach((prefix) => {
+        if (groups[prefix]) {
+          ordered.push({
+            prefix,
+            permissions: [...groups[prefix]].sort()
+          })
+        }
+      })
+
+      const rest = Object.entries(groups)
+        .filter(([prefix]) => !preferredOrder.includes(prefix))
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([prefix, entries]) => ({
           prefix,
           permissions: [...entries].sort()
         }))
+
+      return [...ordered, ...rest]
     },
 
     permissionRoleItems() {
@@ -429,12 +444,13 @@ export default {
                 :key="permission"
                 class="permission-option"
               >
-                <v-checkbox-btn
+                <v-checkbox
                   :model-value="isPermissionAssigned(permission)"
                   :label="permission"
                   :disabled="loadingPermissions || savingPermissions"
                   :aria-label="permission"
                   hide-details
+                  density="compact"
                   @update:model-value="(value) => togglePermission(permission, value)"
                 />
               </div>
@@ -506,7 +522,19 @@ export default {
   display: grid;
   gap: 16px;
   margin-top: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 1200px) {
+  .permissions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 800px) {
+  .permissions {
+    grid-template-columns: 1fr;
+  }
 }
 
 .permission-group {
@@ -526,10 +554,13 @@ export default {
 }
 
 .permission-option :deep(.v-selection-control) {
-  width: fit-content;
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  align-items: center;
 }
 
 .permission-option :deep(.v-label) {
+  white-space: nowrap;
   margin-inline-start: 8px;
 }
 
