@@ -108,10 +108,6 @@ export default {
       return this.canAccess || this.canPermission
     },
 
-    canShowCreateButton() {
-      return !this.result
-    },
-
     canPermission() {
       return this.user.can('user:permission')
     },
@@ -397,13 +393,12 @@ export default {
     <div class="header">
       <div class="bulk">
         <v-btn
-          v-if="canShowCreateButton && canCreate"
           type="button"
           class="btn-create"
           :icon="mdiAccountPlus"
           color="primary"
           variant="tonal"
-          :disabled="creating || loadingUser || !emailValid"
+          :disabled="!canCreate || creating || loadingUser || !emailValid || !!result"
           :loading="creating"
           @click="createUser"
           :title="$gettext('Create user')"
@@ -515,6 +510,10 @@ export default {
 <style scoped>
 .user-table {
   padding: 0 16px 16px;
+}
+
+.access-users .header {
+  align-items: center;
 }
 
 .found-email {
