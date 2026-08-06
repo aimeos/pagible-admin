@@ -117,59 +117,12 @@ export default {
       return [...new Set((this.result?.permissions || []).filter((entry) => this.isRole(entry)))]
     },
 
-    permissionGroups() {
-      const permissions = new Set([...this.permissionOptions.permissions, ...(this.result?.permissions || [])])
-      const groups = {}
-      const preferredOrder = ['page', 'element', 'file', 'image', 'text', 'audio', 'video']
-
-      for (const permission of permissions) {
-        if (typeof permission !== 'string') continue
-
-        const normalized = permission.startsWith('!') ? permission.substring(1) : permission
-        if (!normalized.includes(':')) continue
-
-        const [prefix] = normalized.split(':', 2)
-        if (!prefix) continue
-
-        if (!groups[prefix]) {
-          groups[prefix] = new Set()
-        }
-
-        groups[prefix].add(permission)
-      }
-
-      const ordered = []
-
-      preferredOrder.forEach((prefix) => {
-        if (groups[prefix]) {
-          ordered.push({
-            prefix,
-            permissions: [...groups[prefix]].sort()
-          })
-        }
-      })
-
-      const rest = Object.entries(groups)
-        .filter(([prefix]) => !preferredOrder.includes(prefix))
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([prefix, entries]) => ({
-          prefix,
-          permissions: [...entries].sort()
-        }))
-
-      return [...ordered, ...rest]
-    },
-
     permissionRoleItems() {
       return [...new Set([...this.permissionOptions.roles, ...this.assignedPermissionRoles])].sort()
     },
 
     permissionRole() {
       return this.assignedPermissionRoles.length === 1 ? this.assignedPermissionRoles[0] : null
-    },
-
-    permissionValues() {
-      return new Set(this.result?.permissions || [])
     },
 
     searchEmail() {
@@ -243,10 +196,6 @@ export default {
       if (role) assignments.add(role)
 
       this.changePermissions([...assignments])
-    },
-
-    isPermissionAssigned(permission) {
-      return this.permissionValues.has(permission)
     },
 
     isRole(entry) {
@@ -335,23 +284,6 @@ export default {
       }
     },
 
-    togglePermission(permission, active) {
-      if (!this.result || this.savingPermissions) return
-
-      const assignments = new Set(this.result.permissions || [])
-
-      if (active === false) {
-        assignments.delete(permission)
-      } else if (active === true) {
-        assignments.add(permission)
-      } else if (assignments.has(permission)) {
-        assignments.delete(permission)
-      } else {
-        assignments.add(permission)
-      }
-
-      this.changePermissions([...assignments])
-    }
   }
 }
 </script>
@@ -397,7 +329,10 @@ export default {
     <v-progress-linear v-if="loadingUser" indeterminate color="primary" />
 
     <div v-else-if="result" class="user-table">
-      <p class="found-email">{{ result.email }}</p>
+      <section class="assignment">
+        <h3 class="assignment-title">{{ $gettext('Account') }}</h3>
+        <p class="found-email">{{ result.email }}</p>
+      </section>
 
       <section v-if="canAccess" class="assignment">
         <h3 class="assignment-title">{{ $gettext('Assigned roles') }}</h3>
@@ -434,29 +369,6 @@ export default {
           hide-details
           @update:model-value="changePermissionRole"
         />
-
-        <div class="permissions">
-          <div v-for="group in permissionGroups" :key="group.prefix" class="permission-group">
-            <h4 class="permission-prefix">{{ group.prefix }}</h4>
-            <div class="permission-options">
-              <div
-                v-for="permission in group.permissions"
-                :key="permission"
-                class="permission-option"
-              >
-                <v-checkbox
-                  :model-value="isPermissionAssigned(permission)"
-                  :label="permission"
-                  :disabled="loadingPermissions || savingPermissions"
-                  :aria-label="permission"
-                  hide-details
-                  density="compact"
-                  @update:model-value="(value) => togglePermission(permission, value)"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
       </section>
     </div>
 
@@ -491,7 +403,7 @@ export default {
 .found-email {
   font-family: monospace;
   font-size: 18px;
-  margin: 0 0 16px;
+  margin: 0;
   word-break: break-word;
 }
 
@@ -503,65 +415,13 @@ export default {
   margin: 0 0 8px;
 }
 
-.permission-prefix {
-  margin: 0 0 8px;
-  font-family: monospace;
-}
-
 .assigned :deep(.v-chip),
-.permission-prefix,
 .found-email {
   font-family: monospace;
 }
 
 .assigned {
   min-width: 20rem;
-}
-
-.permissions {
-  display: grid;
-  gap: 16px;
-  margin-top: 12px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-@media (max-width: 1200px) {
-  .permissions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 800px) {
-  .permissions {
-    grid-template-columns: 1fr;
-  }
-}
-
-.permission-group {
-  border: 1px solid rgb(var(--v-theme-outline));
-  border-radius: 6px;
-  padding: 12px;
-}
-
-.permission-options {
-  display: grid;
-  gap: 2px;
-}
-
-.permission-option {
-  align-items: center;
-  display: flex;
-}
-
-.permission-option :deep(.v-selection-control) {
-  display: inline-flex !important;
-  flex: 0 0 auto !important;
-  align-items: center;
-}
-
-.permission-option :deep(.v-label) {
-  white-space: nowrap;
-  margin-inline-start: 8px;
 }
 
 .hint {
