@@ -412,44 +412,32 @@ export default {
       </div>
 
       <div class="search user-search">
-        <v-field
+        <v-text-field
+          v-model="email"
           :label="$gettext('Email address')"
-          variant="underlined"
+          :maxlength="255"
           hide-details
-          :dirty="Boolean(email)"
-          clearable
           :disabled="loadingUser || creating"
-          @click:clear="clearEmail()"
-        >
-          <template #default="{ props: fieldProps, focus }">
-            <input
-              v-model="email"
-              type="email"
-              v-bind="fieldProps"
-              :maxlength="255"
-              :aria-label="$gettext('Search user by email')"
-              @focus="focus"
-              @input="emailChanged"
-              @keydown.enter.prevent="search()"
-            />
-          </template>
+          clearable
+          @update:model-value="emailChanged"
+          @keydown.enter.prevent="search()"
+          type="email"
+          :aria-label="$gettext('Search user by email')"
+        />
 
-          <template #append-inner>
-            <v-btn
-              type="button"
-              class="btn-search"
-              :icon="mdiMagnify"
-              color="primary"
-              variant="tonal"
-              size="small"
-              :disabled="!canManage || loadingUser || creating || !emailValid"
-              :loading="loadingUser"
-              :title="$gettext('Search')"
-              :aria-label="$gettext('Search')"
-              @click.stop="search()"
-            />
-          </template>
-        </v-field>
+        <v-btn
+          type="button"
+          class="btn-search"
+          :icon="mdiMagnify"
+          color="primary"
+          variant="tonal"
+          size="small"
+          :disabled="!canManage || loadingUser || creating || !emailValid"
+          :loading="loadingUser"
+          :title="$gettext('Search')"
+          :aria-label="$gettext('Search')"
+          @click="search()"
+        />
       </div>
 
       <div class="layout">
@@ -529,10 +517,16 @@ export default {
   padding: 0 16px 16px;
 }
 
-.search.user-search :deep(.v-field) {
+.search.user-search :deep(.v-input) {
   min-width: 7.5rem;
   margin: 0 4px;
-  width: 100%;
+  flex: 1 1 auto;
+  width: auto;
+}
+
+.search.user-search {
+  align-items: center;
+  gap: 4px;
 }
 
 .access-users .header {
