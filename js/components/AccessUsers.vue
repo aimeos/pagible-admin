@@ -108,6 +108,10 @@ export default {
       return this.canAccess || this.canPermission
     },
 
+    canShowCreateButton() {
+      return !this.result
+    },
+
     canPermission() {
       return this.user.can('user:permission')
     },
@@ -393,13 +397,13 @@ export default {
     <div class="header">
       <div class="bulk">
         <v-btn
+          v-if="canShowCreateButton && canCreate"
           type="button"
           class="btn-create"
           :icon="mdiAccountPlus"
           color="primary"
-          variant="text"
-          rounded="lg"
-          :disabled="!canCreate || creating || loadingUser || !emailValid"
+          variant="tonal"
+          :disabled="creating || loadingUser || !emailValid"
           :loading="creating"
           @click="createUser"
           :title="$gettext('Create user')"
@@ -412,15 +416,28 @@ export default {
           v-model="email"
           type="email"
           variant="underlined"
-          :append-inner-icon="mdiMagnify"
           :label="$gettext('Email address')"
           maxlength="255"
           hide-details
           clearable
           :aria-label="$gettext('Search user by email')"
           @update:model-value="emailChanged"
-          @click:append-inner="search()"
-        />
+        >
+          <template #append-inner>
+            <v-btn
+              type="button"
+              :icon="mdiMagnify"
+              color="primary"
+              variant="tonal"
+              size="small"
+              :disabled="!canManage || loadingUser || creating || !emailValid"
+              :loading="loadingUser"
+              :title="$gettext('Search')"
+              :aria-label="$gettext('Search')"
+              @click.stop="search()"
+            />
+          </template>
+        </v-text-field>
       </v-form>
 
       <div class="layout">
@@ -428,8 +445,7 @@ export default {
           v-if="canAccess || canPermission"
           class="btn-save"
           color="primary"
-          variant="text"
-          rounded="lg"
+          variant="tonal"
           :icon="mdiContentSave"
           :disabled="!result || !canSaveRoleChanges || savingRoleChanges || rolesLoading || loadingPermissions"
           :loading="savingRoleChanges"
