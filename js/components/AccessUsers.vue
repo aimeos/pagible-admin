@@ -113,14 +113,48 @@ export default {
       )
     },
 
-    permissionItems() {
-      return [
-        ...new Set([
-          ...(this.result?.permissions || []),
-          ...this.permissionOptions.roles,
-          ...this.permissionOptions.permissions
-        ])
-      ].sort()
+    assignedPermissionRoles() {
+      return [...new Set((this.result?.permissions || []).filter((entry) => this.isRole(entry)))]
+    },
+
+    permissionGroups() {
+      const permissions = new Set([...this.permissionOptions.permissions, ...(this.result?.permissions || [])])
+      const groups = {}
+
+      for (const permission of permissions) {
+        if (typeof permission !== 'string') continue
+
+        const normalized = permission.startsWith('!') ? permission.substring(1) : permission
+        if (!normalized.includes(':')) continue
+
+        const [prefix] = normalized.split(':', 2)
+        if (!prefix) continue
+
+        if (!groups[prefix]) {
+          groups[prefix] = new Set()
+        }
+
+        groups[prefix].add(permission)
+      }
+
+      return Object.entries(groups)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([prefix, entries]) => ({
+          prefix,
+          permissions: [...entries].sort()
+        }))
+    },
+
+    permissionRoleItems() {
+      return [...new Set([...this.permissionOptions.roles, ...this.assignedPermissionRoles])].sort()
+    },
+
+    permissionRole() {
+      return this.assignedPermissionRoles.length === 1 ? this.assignedPermissionRoles[0] : null
+    },
+
+    permissionValues() {
+      return new Set(this.result?.permissions || [])
     },
 
     searchEmail() {
@@ -145,8 +179,9 @@ export default {
       if (
         assignments.length === current.size &&
         assignments.every((value) => current.has(value))
-      )
+      ) {
         return
+      }
 
       this[saving] = true
 
@@ -183,6 +218,24 @@ export default {
 
     changePermissions(values) {
       return this.change('permissions', values, SET_USER_PERMISSIONS)
+    },
+
+    changePermissionRole(role) {
+      if (!this.result || this.savingPermissions) return
+
+      const assignments = new Set((this.result.permissions || []).filter((entry) => !this.isRole(entry)))
+
+      if (role) assignments.add(role)
+
+      this.changePermissions([...assignments])
+    },
+
+    isPermissionAssigned(permission) {
+      return this.permissionValues.has(permission)
+    },
+
+    isRole(entry) {
+      return typeof entry === 'string' && !entry.startsWith('!') && !entry.includes(':')
     },
 
     async createUser() {
@@ -265,6 +318,24 @@ export default {
       } finally {
         this.loadingUser = false
       }
+    },
+
+    togglePermission(permission, active) {
+      if (!this.result || this.savingPermissions) return
+
+      const assignments = new Set(this.result.permissions || [])
+
+      if (active === false) {
+        assignments.delete(permission)
+      } else if (active === true) {
+        assignments.add(permission)
+      } else if (assignments.has(permission)) {
+        assignments.delete(permission)
+      } else {
+        assignments.add(permission)
+      }
+
+      this.changePermissions([...assignments])
     }
   }
 }
@@ -310,56 +381,64 @@ export default {
 
     <v-progress-linear v-if="loadingUser" indeterminate color="primary" />
 
-    <v-table v-else-if="result" class="user-table">
-      <thead>
-        <tr>
-          <th>{{ $gettext('Email address') }}</th>
-          <th v-if="canAccess">{{ $gettext('Assigned roles') }}</th>
-          <th v-if="canPermission">{{ $gettext('CMS permissions') }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td class="email">{{ result.email }}</td>
-          <td v-if="canAccess">
-            <v-autocomplete
-              class="assigned assigned-access"
-              :model-value="result.access"
-              :items="accessItems"
-              :loading="rolesLoading || savingAccess"
-              :disabled="savingAccess"
-              :label="$gettext('Assigned roles')"
-              variant="underlined"
-              multiple
-              chips
-              closable-chips
-              clearable
-              hide-selected
-              hide-details
-              @update:model-value="changeAccess"
-            />
-          </td>
-          <td v-if="canPermission">
-            <v-autocomplete
-              class="assigned assigned-permissions"
-              :model-value="result.permissions"
-              :items="permissionItems"
-              :loading="loadingPermissions || savingPermissions"
-              :disabled="loadingPermissions || savingPermissions"
-              :label="$gettext('CMS permissions')"
-              variant="underlined"
-              multiple
-              chips
-              closable-chips
-              clearable
-              hide-selected
-              hide-details
-              @update:model-value="changePermissions"
-            />
-          </td>
-        </tr>
-      </tbody>
-    </v-table>
+    <div v-else-if="result" class="user-table">
+      <p class="found-email">{{ result.email }}</p>
+
+      <section v-if="canAccess" class="assignment">
+        <h3 class="assignment-title">{{ $gettext('Assigned roles') }}</h3>
+        <v-autocomplete
+          class="assigned assigned-access"
+          :model-value="result.access"
+          :items="accessItems"
+          :loading="rolesLoading || savingAccess"
+          :disabled="savingAccess"
+          :label="$gettext('Assigned roles')"
+          variant="underlined"
+          multiple
+          chips
+          closable-chips
+          clearable
+          hide-selected
+          hide-details
+          @update:model-value="changeAccess"
+        />
+      </section>
+
+      <section v-if="canPermission" class="assignment assigned-permissions">
+        <h3 class="assignment-title">{{ $gettext('Assigned permissions') }}</h3>
+
+        <v-select
+          class="assigned"
+          :model-value="permissionRole"
+          :items="permissionRoleItems"
+          :loading="loadingPermissions || savingPermissions"
+          :disabled="loadingPermissions || savingPermissions"
+          :label="$gettext('Available roles')"
+          variant="underlined"
+          clearable
+          hide-details
+          @update:model-value="changePermissionRole"
+        />
+
+        <div class="permissions">
+          <div v-for="group in permissionGroups" :key="group.prefix" class="permission-group">
+            <h4 class="permission-prefix">{{ group.prefix }}</h4>
+            <div class="permission-options">
+              <v-checkbox
+                v-for="permission in group.permissions"
+                :key="permission"
+                :model-value="isPermissionAssigned(permission)"
+                :label="permission"
+                hide-details
+                density="compact"
+                :disabled="loadingPermissions || savingPermissions"
+                @update:model-value="(value) => togglePermission(permission, value)"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
 
     <p v-else-if="result === null" class="notfound">{{ $gettext('No entries found') }}</p>
 
@@ -385,20 +464,56 @@ export default {
   max-width: 30rem;
 }
 
-.user-table th,
-.user-table td {
-  padding: 16px;
-  text-align: start;
-  vertical-align: top;
+.user-table {
+  padding: 0 16px 16px;
 }
 
-.email,
-.assigned :deep(.v-chip) {
+.found-email {
+  font-family: monospace;
+  font-size: 18px;
+  margin: 0 0 16px;
+  word-break: break-word;
+}
+
+.assignment {
+  margin-bottom: 24px;
+}
+
+.assignment-title {
+  margin: 0 0 8px;
+}
+
+.permission-prefix {
+  margin: 0 0 8px;
+  font-family: monospace;
+}
+
+.assigned :deep(.v-chip),
+.permission-prefix,
+.found-email {
   font-family: monospace;
 }
 
 .assigned {
   min-width: 20rem;
+}
+
+.permissions {
+  display: grid;
+  gap: 16px;
+  margin-top: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.permission-group {
+  border: 1px solid rgb(var(--v-theme-outline));
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.permission-options {
+  display: grid;
+  gap: 2px;
 }
 
 .hint {
