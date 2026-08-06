@@ -424,16 +424,20 @@ export default {
           <div v-for="group in permissionGroups" :key="group.prefix" class="permission-group">
             <h4 class="permission-prefix">{{ group.prefix }}</h4>
             <div class="permission-options">
-              <v-checkbox
+              <div
                 v-for="permission in group.permissions"
                 :key="permission"
-                :model-value="isPermissionAssigned(permission)"
-                :label="permission"
-                hide-details
-                density="compact"
-                :disabled="loadingPermissions || savingPermissions"
-                @update:model-value="(value) => togglePermission(permission, value)"
-              />
+                class="permission-option"
+              >
+                <v-checkbox-btn
+                  :model-value="isPermissionAssigned(permission)"
+                  :label="permission"
+                  :disabled="loadingPermissions || savingPermissions"
+                  :aria-label="permission"
+                  hide-details
+                  @update:model-value="(value) => togglePermission(permission, value)"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -514,6 +518,19 @@ export default {
 .permission-options {
   display: grid;
   gap: 2px;
+}
+
+.permission-option {
+  align-items: center;
+  display: flex;
+}
+
+.permission-option :deep(.v-selection-control) {
+  width: fit-content;
+}
+
+.permission-option :deep(.v-label) {
+  margin-inline-start: 8px;
 }
 
 .hint {
