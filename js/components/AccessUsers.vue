@@ -384,6 +384,11 @@ export default {
       }
     },
 
+    clearEmail() {
+      this.email = ''
+      this.emailChanged()
+    },
+
   }
 }
 </script>
@@ -407,18 +412,28 @@ export default {
       </div>
 
       <div class="search user-search">
-        <v-text-field
-          v-model="email"
-          type="email"
-          variant="underlined"
+        <v-field
           :label="$gettext('Email address')"
-          maxlength="255"
+          variant="underlined"
           hide-details
+          :dirty="Boolean(email)"
           clearable
-          :aria-label="$gettext('Search user by email')"
-          @update:model-value="emailChanged"
-          @keydown.enter.prevent="search()"
+          :disabled="loadingUser || creating"
+          @click:clear="clearEmail()"
         >
+          <template #default="{ props: fieldProps, focus }">
+            <input
+              v-model="email"
+              type="email"
+              v-bind="fieldProps"
+              :maxlength="255"
+              :aria-label="$gettext('Search user by email')"
+              @focus="focus"
+              @input="emailChanged"
+              @keydown.enter.prevent="search()"
+            />
+          </template>
+
           <template #append-inner>
             <v-btn
               type="button"
@@ -434,7 +449,7 @@ export default {
               @click.stop="search()"
             />
           </template>
-        </v-text-field>
+        </v-field>
       </div>
 
       <div class="layout">
@@ -512,6 +527,12 @@ export default {
 <style scoped>
 .user-table {
   padding: 0 16px 16px;
+}
+
+.search.user-search :deep(.v-field) {
+  min-width: 7.5rem;
+  margin: 0 4px;
+  width: 100%;
 }
 
 .access-users .header {
