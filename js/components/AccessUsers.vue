@@ -455,7 +455,7 @@ export default {
           color="primary"
           variant="tonal"
           :icon="mdiContentSave"
-          :disabled="!result || !canSaveRoleChanges || savingRoleChanges || rolesLoading || loadingPermissions"
+          :disabled="!result || !canSaveRoleChanges || savingRoleChanges || rolesLoading || loadingPermissions || isCurrentUser"
           :loading="savingRoleChanges"
           @click="applyRoleChanges"
           :title="$gettext('Save')"
@@ -495,14 +495,14 @@ export default {
       <section v-if="canPermission" class="assignment assigned-permissions">
         <h3 class="assignment-title">{{ $gettext('Assigned backend roles') }}</h3>
 
-        <v-select
+        <v-autocomplete
           class="assigned"
           :item-title="value => value === customRoleValue ? $gettext('Custom') : value"
           :item-value="(value) => value"
           :model-value="backendRoleDraft"
           :items="permissionRoleItems"
-          :loading="loadingPermissions || savingPermissions"
-          :disabled="loadingPermissions || savingPermissions || isCurrentUser"
+          :loading="savingPermissions"
+          :disabled="savingPermissions || isCurrentUser"
           :label="$gettext('Available roles')"
           variant="underlined"
           multiple
@@ -559,6 +559,10 @@ export default {
 .assigned :deep(.v-chip),
 .found-email {
   font-family: monospace;
+}
+
+:global(.assigned-permissions input[role='combobox']) {
+  pointer-events: auto !important;
 }
 
 .assigned {

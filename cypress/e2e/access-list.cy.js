@@ -257,14 +257,14 @@ describe('Access list', () => {
     })
     cy.get('.assigned-access input').type('{esc}')
 
-    cy.get('.assigned-permissions input').click()
-    cy.contains('.v-overlay--active .v-list-item', 'page:view').click()
+    cy.get('.assigned-permissions .assigned').click()
+    cy.contains('.v-overlay--active .v-list-item', 'editor').click()
     cy.get('.btn-save').click()
     cy.wait('@setUserPermissions').then(({ request }) => {
       const operation = Array.isArray(request.body) ? request.body[0] : request.body
       expect(operation.variables.id).to.equal('user-1')
       expect(operation.variables).not.to.have.property('email')
-      expect(operation.variables.permissions).to.have.members(['viewer', 'page:view'])
+      expect(operation.variables.permissions).to.have.members(['viewer', 'editor'])
     })
 
     cy.then(() => expect(requests.cmsUser).to.equal(1))
@@ -380,8 +380,8 @@ describe('Access list', () => {
     cy.get('.user-search input').clear().type('member@example.com')
     cy.get('.btn-search').click()
     cy.wait('@cmsUser')
-    cy.get('.assigned-permissions input').click()
-    cy.contains('.v-overlay--active .v-list-item', 'page:view').click()
+    cy.get('.assigned-permissions .assigned').click()
+    cy.contains('.v-overlay--active .v-list-item', 'editor').click()
     cy.get('.btn-save').click()
     cy.get('.user-search input').clear().type('other@example.com')
     cy.wait('@setUserPermissions')
