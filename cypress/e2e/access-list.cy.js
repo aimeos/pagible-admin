@@ -248,6 +248,7 @@ describe('Access list', () => {
 
     cy.get('.assigned-access input').click()
     cy.contains('.v-overlay--active .v-list-item', 'alpha').click()
+    cy.get('.btn-save').click()
     cy.wait('@setUserAccess').then(({ request }) => {
       const operation = Array.isArray(request.body) ? request.body[0] : request.body
       expect(operation.variables.id).to.equal('user-1')
@@ -258,6 +259,7 @@ describe('Access list', () => {
 
     cy.get('.assigned-permissions input').click()
     cy.contains('.v-overlay--active .v-list-item', 'page:view').click()
+    cy.get('.btn-save').click()
     cy.wait('@setUserPermissions').then(({ request }) => {
       const operation = Array.isArray(request.body) ? request.body[0] : request.body
       expect(operation.variables.id).to.equal('user-1')
@@ -370,6 +372,7 @@ describe('Access list', () => {
     cy.wait('@cmsUser')
     cy.get('.assigned-access input').click()
     cy.contains('.v-overlay--active .v-list-item', 'alpha').click()
+    cy.get('.btn-save').click()
     cy.get('.user-search input').clear().type('other@example.com')
     cy.wait('@setUserAccess')
     cy.get('.user-table').should('not.exist')
@@ -379,6 +382,7 @@ describe('Access list', () => {
     cy.wait('@cmsUser')
     cy.get('.assigned-permissions input').click()
     cy.contains('.v-overlay--active .v-list-item', 'page:view').click()
+    cy.get('.btn-save').click()
     cy.get('.user-search input').clear().type('other@example.com')
     cy.wait('@setUserPermissions')
     cy.get('.user-table').should('not.exist')

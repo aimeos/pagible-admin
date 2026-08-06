@@ -69,6 +69,8 @@ export default {
     return {
       messages,
       user,
+      mdiAccountPlus,
+      mdiContentSave,
       mdiMagnify
     }
   },
@@ -392,9 +394,11 @@ export default {
       <div class="bulk">
         <v-btn
           type="button"
+          class="btn-create"
           :icon="mdiAccountPlus"
           color="primary"
-          variant="tonal"
+          variant="text"
+          rounded="lg"
           :disabled="!canCreate || creating || loadingUser || !emailValid"
           :loading="creating"
           @click="createUser"
@@ -403,35 +407,29 @@ export default {
         />
       </div>
 
-      <v-form id="user-search-form" class="search" @submit.prevent="search()">
+      <v-form id="user-search-form" class="search user-search" @submit.prevent="search()">
         <v-text-field
           v-model="email"
           type="email"
           variant="underlined"
+          :append-inner-icon="mdiMagnify"
           :label="$gettext('Email address')"
           maxlength="255"
           hide-details
           clearable
+          :aria-label="$gettext('Search user by email')"
           @update:model-value="emailChanged"
+          @click:append-inner="search()"
         />
       </v-form>
 
       <div class="layout">
         <v-btn
-          type="submit"
-          form="user-search-form"
-          :icon="mdiMagnify"
-          color="primary"
-          variant="tonal"
-          :disabled="!canManage || loadingUser || creating || !emailValid"
-          :loading="loadingUser"
-          :title="$gettext('Search')"
-          :aria-label="$gettext('Search')"
-        />
-        <v-btn
           v-if="canAccess || canPermission"
+          class="btn-save"
           color="primary"
-          variant="tonal"
+          variant="text"
+          rounded="lg"
           :icon="mdiContentSave"
           :disabled="!result || !canSaveRoleChanges || savingRoleChanges || rolesLoading || loadingPermissions"
           :loading="savingRoleChanges"
