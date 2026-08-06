@@ -174,7 +174,7 @@ describe('Access list', () => {
     // and merges into the users-tab assigned roles options
     cy.contains('.v-tab', 'Users').click()
     cy.get('.user-search input').type('member@example.com')
-    cy.get('.user-search').submit()
+    cy.get('.btn-search').click()
     cy.wait('@cmsUser')
     cy.get('.assigned-access').should('exist').and('have.class', 'v-autocomplete')
   })
@@ -232,7 +232,7 @@ describe('Access list', () => {
     cy.wait('@permissions')
 
     cy.get('.user-search input').type('member@example.com')
-    cy.get('.user-search').submit()
+    cy.get('.btn-search').click()
     cy.wait('@cmsUser').then(({ request }) => {
       const operation = Array.isArray(request.body) ? request.body[0] : request.body
       expect(operation.variables).to.deep.equal({
@@ -275,7 +275,7 @@ describe('Access list', () => {
     cy.contains('.v-tab', 'Users').click()
 
     cy.get('.user-search input').type('member@example.com')
-    cy.get('.user-search').submit()
+    cy.get('.btn-search').click()
     cy.wait('@cmsUser').then(({ request }) => {
       const operation = Array.isArray(request.body) ? request.body[0] : request.body
       expect(operation.variables.withAccess).to.equal(true)
@@ -292,7 +292,7 @@ describe('Access list', () => {
     cy.wait('@permissions')
 
     cy.get('.user-search input').type('member@example.com')
-    cy.get('.user-search').submit()
+    cy.get('.btn-search').click()
     cy.wait('@cmsUser').then(({ request }) => {
       const operation = Array.isArray(request.body) ? request.body[0] : request.body
       expect(operation.variables.withAccess).to.equal(false)
@@ -351,7 +351,7 @@ describe('Access list', () => {
     cy.contains('.v-tab', 'Users').click()
 
     cy.get('.user-search input').type('member@example.com')
-    cy.get('.user-search').submit()
+    cy.get('.btn-search').click()
     cy.get('.user-search input').clear().type('other@example.com')
     cy.wait('@cmsUser')
 
@@ -368,7 +368,7 @@ describe('Access list', () => {
     cy.wait('@permissions')
 
     cy.get('.user-search input').type('member@example.com')
-    cy.get('.user-search').submit()
+    cy.get('.btn-search').click()
     cy.wait('@cmsUser')
     cy.get('.assigned-access input').click()
     cy.contains('.v-overlay--active .v-list-item', 'alpha').click()
@@ -378,7 +378,7 @@ describe('Access list', () => {
     cy.get('.user-table').should('not.exist')
 
     cy.get('.user-search input').clear().type('member@example.com')
-    cy.get('.user-search').submit()
+    cy.get('.btn-search').click()
     cy.wait('@cmsUser')
     cy.get('.assigned-permissions input').click()
     cy.contains('.v-overlay--active .v-list-item', 'page:view').click()

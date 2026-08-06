@@ -406,7 +406,7 @@ export default {
         />
       </div>
 
-      <v-form id="user-search-form" class="search user-search" @submit.prevent="search()">
+      <div class="search user-search">
         <v-text-field
           v-model="email"
           type="email"
@@ -417,10 +417,12 @@ export default {
           clearable
           :aria-label="$gettext('Search user by email')"
           @update:model-value="emailChanged"
+          @keydown.enter.prevent="search()"
         >
           <template #append-inner>
             <v-btn
               type="button"
+              class="btn-search"
               :icon="mdiMagnify"
               color="primary"
               variant="tonal"
@@ -433,7 +435,7 @@ export default {
             />
           </template>
         </v-text-field>
-      </v-form>
+      </div>
 
       <div class="layout">
         <v-btn
