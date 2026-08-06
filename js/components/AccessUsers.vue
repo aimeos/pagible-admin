@@ -167,6 +167,13 @@ export default {
       return !this.selectionEqual(this.backendRoleDraft, this.permissionRole)
     },
 
+    isCurrentUser() {
+      const userEmail = (this.user.me?.email || '').trim().toLocaleLowerCase()
+      const resultEmail = (this.result?.email || '').trim().toLocaleLowerCase()
+
+      return !!userEmail && !!resultEmail && userEmail === resultEmail
+    },
+
     canSaveRoleChanges() {
       return (this.canAccess && this.hasFrontendRoleChanges) || (this.canPermission && this.hasBackendRoleChanges)
     },
@@ -495,7 +502,7 @@ export default {
           :model-value="backendRoleDraft"
           :items="permissionRoleItems"
           :loading="loadingPermissions || savingPermissions"
-          :disabled="loadingPermissions || savingPermissions"
+          :disabled="loadingPermissions || savingPermissions || isCurrentUser"
           :label="$gettext('Available roles')"
           variant="underlined"
           multiple
