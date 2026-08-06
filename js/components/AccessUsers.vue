@@ -122,7 +122,7 @@ export default {
     },
 
     permissionRole() {
-      return this.assignedPermissionRoles.length === 1 ? this.assignedPermissionRoles[0] : null
+      return this.assignedPermissionRoles
     },
 
     searchEmail() {
@@ -188,12 +188,14 @@ export default {
       return this.change('permissions', values, SET_USER_PERMISSIONS)
     },
 
-    changePermissionRole(role) {
+    changePermissionRole(roles) {
       if (!this.result || this.savingPermissions) return
 
       const assignments = new Set((this.result.permissions || []).filter((entry) => !this.isRole(entry)))
 
-      if (role) assignments.add(role)
+      (roles || []).forEach((role) => {
+        if (role) assignments.add(role)
+      })
 
       this.changePermissions([...assignments])
     },
@@ -335,14 +337,14 @@ export default {
       </section>
 
       <section v-if="canAccess" class="assignment">
-        <h3 class="assignment-title">{{ $gettext('Assigned roles') }}</h3>
+        <h3 class="assignment-title">{{ $gettext('Assigned frontend roles') }}</h3>
         <v-autocomplete
           class="assigned assigned-access"
           :model-value="result.access"
           :items="accessItems"
           :loading="rolesLoading || savingAccess"
           :disabled="savingAccess"
-          :label="$gettext('Assigned roles')"
+          :label="$gettext('Assigned frontend roles')"
           variant="underlined"
           multiple
           chips
@@ -355,7 +357,7 @@ export default {
       </section>
 
       <section v-if="canPermission" class="assignment assigned-permissions">
-        <h3 class="assignment-title">{{ $gettext('Assigned permissions') }}</h3>
+        <h3 class="assignment-title">{{ $gettext('Assigned backend roles') }}</h3>
 
         <v-select
           class="assigned"
@@ -365,6 +367,9 @@ export default {
           :disabled="loadingPermissions || savingPermissions"
           :label="$gettext('Available roles')"
           variant="underlined"
+          multiple
+          chips
+          closable-chips
           clearable
           hide-details
           @update:model-value="changePermissionRole"
@@ -374,13 +379,6 @@ export default {
 
     <p v-else-if="result === null" class="notfound">{{ $gettext('No entries found') }}</p>
 
-    <p v-if="result && canAccess" class="hint">
-      {{
-        $gettext(
-          'Removing a direct role may not remove access granted through provider roles or other integrations.'
-        )
-      }}
-    </p>
   </div>
 </template>
 
@@ -422,12 +420,6 @@ export default {
 
 .assigned {
   min-width: 20rem;
-}
-
-.hint {
-  color: rgb(var(--v-theme-on-surface-light));
-  margin: 0;
-  padding: 0 16px 16px;
 }
 
 .notfound {
