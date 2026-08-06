@@ -79,6 +79,9 @@ export default {
       email: '',
       loadingPermissions: false,
       loadingUser: false,
+      customRoleValue: '__cms_role_custom__',
+      backendRoleDraft: [],
+      frontendRoleDraft: [],
       permissionOptions: { roles: [], permissions: [] },
       result: undefined,
       savingAccess: false,
@@ -117,16 +120,49 @@ export default {
       return [...new Set((this.result?.permissions || []).filter((entry) => this.isRole(entry)))]
     },
 
+    isBackendPermissionCustom() {
+      if (!this.result?.permissions?.length) return false
+
+      const known = new Set(this.permissionOptions.roles || [])
+
+      return (this.result.permissions || []).some((entry) => {
+        if (!this.isRole(entry)) {
+          return true
+        }
+
+        return !known.has(entry)
+      })
+    },
+
     permissionRoleItems() {
-      return [...new Set([...this.permissionOptions.roles, ...this.assignedPermissionRoles])].sort()
+      const options = [...this.permissionOptions.roles].sort()
+      const items = [...new Set([...options, ...this.assignedPermissionRoles])]
+
+      if (this.isBackendPermissionCustom) {
+        items.push(this.customRoleValue)
+      }
+
+      return items
     },
 
     permissionRole() {
+      if (this.isBackendPermissionCustom) {
+        return [this.customRoleValue]
+      }
+
       return this.assignedPermissionRoles
     },
 
     searchEmail() {
       return this.email?.trim().toLocaleLowerCase() || ''
+    },
+
+    hasFrontendRoleChanges() {
+      return !this.selectionEqual(this.frontendRoleDraft, this.result?.access || [])
+    },
+
+    hasBackendRoleChanges() {
+      return !this.selectionEqual(this.backendRoleDraft, this.permissionRole)
     }
   },
 
@@ -164,6 +200,9 @@ export default {
 
           if (field === 'access') {
             this.messages.add(this.$gettext('Access roles updated'), 'success')
+            this.syncFrontendRoleDraft()
+          } else {
+            this.syncBackendRoleDraft()
           }
         }
       } catch (error) {
@@ -180,6 +219,26 @@ export default {
       }
     },
 
+    syncBackendRoleDraft() {
+      this.backendRoleDraft = this.permissionRole
+    },
+
+    syncFrontendRoleDraft() {
+      this.frontendRoleDraft = [...new Set(this.result?.access || [])]
+    },
+
+    syncRoleDrafts() {
+      this.syncFrontendRoleDraft()
+      this.syncBackendRoleDraft()
+    },
+
+    selectionEqual(a, b) {
+      const left = [...new Set((a || []).filter((v) => v !== undefined))].sort()
+      const right = [...new Set((b || []).filter((v) => v !== undefined))].sort()
+
+      return left.length === right.length && left.every((value, index) => value === right[index])
+    },
+
     changeAccess(values) {
       return this.change('access', values, SET_USER_ACCESS)
     },
@@ -188,16 +247,32 @@ export default {
       return this.change('permissions', values, SET_USER_PERMISSIONS)
     },
 
+    applyAccessRoles() {
+      return this.changeAccess(this.frontendRoleDraft)
+    },
+
+    applyPermissionRoles() {
+      return this.changePermissionRole(this.backendRoleDraft)
+    },
+
     changePermissionRole(roles) {
       if (!this.result || this.savingPermissions) return
 
-      const assignments = new Set((this.result.permissions || []).filter((entry) => !this.isRole(entry)))
-
-      (roles || []).forEach((role) => {
-        if (role) assignments.add(role)
-      })
+      const remaining = (this.result.permissions || []).filter((entry) =>
+        !this.isRole(entry) || !this.permissionOptions.roles.includes(entry)
+      )
+      const selected = (roles || []).filter((value) => value !== this.customRoleValue)
+      const assignments = new Set([...remaining, ...selected])
 
       this.changePermissions([...assignments])
+    },
+
+    changePermissionRoleDraft(roles) {
+      this.backendRoleDraft = [...new Set(Array.isArray(roles) ? roles : [])]
+    },
+
+    changeAccessDraft(values) {
+      this.frontendRoleDraft = [...new Set(Array.isArray(values) ? values : [])]
     },
 
     isRole(entry) {
@@ -223,6 +298,7 @@ export default {
         if (email === this.searchEmail) {
           this.messages.add(this.$gettext('User created'), 'success')
           this.result = response.data.createUser
+          this.syncRoleDrafts()
         }
       } catch (error) {
         if (email === this.searchEmail) {
@@ -249,6 +325,7 @@ export default {
         })
 
         this.permissionOptions = response.data.permissions
+        this.syncBackendRoleDraft()
       } catch (error) {
         this.messages.add(this.$gettext('Error fetching access roles') + ':\n' + error, 'error')
       } finally {
@@ -276,6 +353,7 @@ export default {
 
         if (email === this.searchEmail) {
           this.result = response.data.cmsUser
+          this.syncRoleDrafts()
         }
       } catch (error) {
         if (email === this.searchEmail) {
@@ -292,41 +370,46 @@ export default {
 
 <template>
   <div class="access-users">
-    <v-form class="user-search" @submit.prevent="search()">
-      <v-text-field
-        v-model="email"
-        type="email"
-        :prepend-inner-icon="mdiMagnify"
-        variant="underlined"
-        :label="$gettext('Email address')"
-        maxlength="255"
-        hide-details
-        clearable
-        @update:model-value="emailChanged"
-      />
-      <v-btn
-        v-if="canManage"
-        type="submit"
-        color="primary"
-        variant="tonal"
-        :disabled="loadingUser || creating || !emailValid"
-        :loading="loadingUser"
-      >
-        {{ $gettext('Search') }}
-      </v-btn>
-      <v-btn
-        v-if="canCreate"
-        type="button"
-        class="btn-create"
-        color="primary"
-        variant="tonal"
-        :disabled="creating || loadingUser || !emailValid"
-        :loading="creating"
-        @click="createUser"
-      >
-        {{ $gettext('Create user') }}
-      </v-btn>
-    </v-form>
+    <div class="header">
+      <v-form id="user-search-form" class="search" @submit.prevent="search()">
+        <v-text-field
+          v-model="email"
+          type="email"
+          :prepend-inner-icon="mdiMagnify"
+          variant="underlined"
+          :label="$gettext('Email address')"
+          maxlength="255"
+          hide-details
+          clearable
+          @update:model-value="emailChanged"
+        />
+      </v-form>
+
+      <div class="layout">
+        <v-btn
+          v-if="canManage"
+          type="submit"
+          form="user-search-form"
+          color="primary"
+          variant="tonal"
+          :disabled="loadingUser || creating || !emailValid"
+          :loading="loadingUser"
+        >
+          {{ $gettext('Search') }}
+        </v-btn>
+        <v-btn
+          v-if="canCreate"
+          type="button"
+          color="primary"
+          variant="tonal"
+          :disabled="creating || loadingUser || !emailValid"
+          :loading="creating"
+          @click="createUser"
+        >
+          {{ $gettext('Create user') }}
+        </v-btn>
+      </div>
+    </div>
 
     <v-progress-linear v-if="loadingUser" indeterminate color="primary" />
 
@@ -340,7 +423,7 @@ export default {
         <h3 class="assignment-title">{{ $gettext('Assigned frontend roles') }}</h3>
         <v-autocomplete
           class="assigned assigned-access"
-          :model-value="result.access"
+          :model-value="frontendRoleDraft"
           :items="accessItems"
           :loading="rolesLoading || savingAccess"
           :disabled="savingAccess"
@@ -352,8 +435,18 @@ export default {
           clearable
           hide-selected
           hide-details
-          @update:model-value="changeAccess"
+          @update:model-value="changeAccessDraft"
         />
+        <v-btn
+          color="primary"
+          variant="tonal"
+          size="small"
+          :disabled="!hasFrontendRoleChanges || savingAccess || rolesLoading"
+          :loading="savingAccess"
+          @click="applyAccessRoles"
+        >
+          {{ $gettext('Apply') }}
+        </v-btn>
       </section>
 
       <section v-if="canPermission" class="assignment assigned-permissions">
@@ -361,7 +454,9 @@ export default {
 
         <v-select
           class="assigned"
-          :model-value="permissionRole"
+          :item-title="value => value === customRoleValue ? $gettext('Custom') : value"
+          :item-value="(value) => value"
+          :model-value="backendRoleDraft"
           :items="permissionRoleItems"
           :loading="loadingPermissions || savingPermissions"
           :disabled="loadingPermissions || savingPermissions"
@@ -372,8 +467,18 @@ export default {
           closable-chips
           clearable
           hide-details
-          @update:model-value="changePermissionRole"
+          @update:model-value="changePermissionRoleDraft"
         />
+        <v-btn
+          color="primary"
+          variant="tonal"
+          size="small"
+          :disabled="!hasBackendRoleChanges || savingPermissions || loadingPermissions"
+          :loading="savingPermissions"
+          @click="applyPermissionRoles"
+        >
+          {{ $gettext('Apply') }}
+        </v-btn>
       </section>
     </div>
 
@@ -383,17 +488,6 @@ export default {
 </template>
 
 <style scoped>
-.user-search {
-  align-items: end;
-  display: flex;
-  gap: 16px;
-  padding: 16px;
-}
-
-.user-search .v-text-field {
-  max-width: 30rem;
-}
-
 .user-table {
   padding: 0 16px 16px;
 }
@@ -425,12 +519,5 @@ export default {
 .notfound {
   margin: 0;
   padding: 16px;
-}
-
-@media (max-width: 600px) {
-  .user-search {
-    align-items: stretch;
-    flex-direction: column;
-  }
 }
 </style>
