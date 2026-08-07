@@ -2,7 +2,7 @@
 
 <script>
 import gql from 'graphql-tag'
-import { mdiAccountPlus, mdiContentSave, mdiMagnify } from '@mdi/js'
+import { mdiAccountPlus, mdiDatabaseArrowDown, mdiMagnify } from '@mdi/js'
 import { apolloClient } from '../graphql'
 import { useMessageStore, useUserStore } from '../stores'
 
@@ -70,7 +70,7 @@ export default {
       messages,
       user,
       mdiAccountPlus,
-      mdiContentSave,
+      mdiDatabaseArrowDown,
       mdiMagnify
     }
   },
@@ -454,7 +454,7 @@ export default {
           class="btn-save"
           color="primary"
           variant="tonal"
-          :icon="mdiContentSave"
+          :icon="mdiDatabaseArrowDown"
           :disabled="!result || !canSaveRoleChanges || savingRoleChanges || rolesLoading || loadingPermissions || isCurrentUser"
           :loading="savingRoleChanges"
           @click="applyRoleChanges"
