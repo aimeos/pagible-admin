@@ -19,6 +19,8 @@ const ALL_PERMISSIONS = {
   'element:keep': true,
   'element:purge': true,
   'element:publish': true,
+  'page:access': true,
+  'page:save': true,
   'page:view': true,
   'file:view': true,
 }
@@ -34,9 +36,16 @@ const ELEMENT_SCHEMAS = [{
   label: 'CMS',
   types: '{}',
   content: JSON.stringify({
-    heading: { fields: { title: { type: 'string' } } },
-    contact: { fields: { title: { type: 'string' } } },
+    heading: { group: 'basic', fields: { title: { type: 'string' } } },
+    contact: { group: 'forms', fields: { title: { type: 'string' } } },
   }),
+  meta: '{}',
+  config: '{}',
+}, {
+  name: 'pagible',
+  label: 'Pagible',
+  types: JSON.stringify({ page: { sections: ['main', 'footer'] } }),
+  content: '{}',
   meta: '{}',
   config: '{}',
 }]
@@ -80,6 +89,45 @@ function makeElementDetail(overrides = {}) {
   }, overrides)
 }
 
+/** Full referenced page response shape for the `page(id)` query. */
+function makePageDetail(overrides = {}) {
+  return Object.assign({
+    id: 'page-version-1',
+    aux: JSON.stringify({
+      content: [{ id: 'ref-1', type: 'reference', group: 'main', refid: '1' }],
+      meta: {},
+      config: {},
+    }),
+    data: JSON.stringify({
+      name: 'Referenced page',
+      title: 'Referenced page',
+      path: 'referenced-page',
+      lang: 'en',
+      status: 1,
+      domain: '',
+      to: '',
+      tag: '',
+      type: 'page',
+      theme: 'pagible',
+      cache: 5,
+    }),
+    published: true,
+    publish_at: null,
+    created_at: '2026-01-01 00:00:00',
+    editor: 'admin@example.com',
+    files: [],
+    elements: [{
+      id: '1',
+      type: 'heading',
+      name: 'Hero Banner',
+      data: JSON.stringify({ title: 'Welcome' }),
+      editor: 'admin@example.com',
+      updated_at: '2026-01-01 00:00:00',
+      files: [],
+    }],
+  }, overrides)
+}
+
 /** Wraps an elements array in the paginated GraphQL response shape. */
 function elementsResponse(elements) {
   return {
@@ -97,6 +145,8 @@ function setupIntercept({
   meResponse = ME_ADMIN,
   elements = [],
   elementDetail = null,
+  elementRefs = null,
+  pageDetail = null,
   versions = [],
   saveElement = null,
   pubElement = null,
@@ -124,6 +174,9 @@ function setupIntercept({
       if (query.includes('schemas')) {
         return { data: { schemas } }
       }
+      if (query.includes('bypages') || query.includes('byversions')) {
+        return { data: { element: elementRefs } }
+      }
       // Versions query (contains 'versions')
       if (query.includes('versions')) {
         return { data: { element: { id: op.variables?.id || '1', versions: versions } } }
@@ -138,6 +191,19 @@ function setupIntercept({
               files: detail.files || [],
               latest: detail.latest,
             },
+          },
+        }
+      }
+      if (query.includes('page(') && !query.includes('pages(')) {
+        return {
+          data: {
+            page: pageDetail ? {
+              id: op.variables?.id || 'page-1',
+              access: [],
+              has: 0,
+              restricted: false,
+              latest: pageDetail,
+            } : null,
           },
         }
       }
@@ -331,6 +397,37 @@ describe('Element Detail', () => {
 
     detailView().find('.label').should('contain', 'title')
     detailView().find('textarea').should('have.value', 'Contact us')
+  })
+
+  it('shows content added to a referenced page opened from the shared element', () => {
+    const element = makeElement()
+    const detail = makeElementDetail()
+    const page = makePageDetail()
+
+    setupIntercept({
+      elements: [element],
+      elementDetail: detail,
+      elementRefs: {
+        id: element.id,
+        bypages: [{ id: 'page-1', path: 'referenced-page', name: 'Referenced page', restricted: false }],
+        byversions: [],
+      },
+      pageDetail: page,
+    })
+
+    cy.visit('/elements')
+    cy.get('.item-text').first().click()
+    detailView().find('.v-tab').contains('Used by').click()
+    detailView().find('.v-table.pages tbody tr').click()
+
+    detailView().find('.page-details').should('be.visible')
+    detailView().find('.v-tab').contains('Content').click()
+    detailView().find('.content').should('have.length', 1)
+    detailView().find('button.btn-add').click()
+    cy.get('.v-dialog').contains('button', 'heading').click()
+
+    detailView().find('.content').should('have.length', 2)
+    detailView().find('.menu-save').should('not.be.disabled')
   })
 
   // ---- Permission-based behavior ----
