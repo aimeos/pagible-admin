@@ -29,6 +29,18 @@ const ME_ADMIN = {
   name: 'Admin',
 }
 
+const ELEMENT_SCHEMAS = [{
+  name: 'cms',
+  label: 'CMS',
+  types: '{}',
+  content: JSON.stringify({
+    heading: { fields: { title: { type: 'string' } } },
+    contact: { fields: { title: { type: 'string' } } },
+  }),
+  meta: '{}',
+  config: '{}',
+}]
+
 /** A minimal element entry as the GraphQL `elements` query would return. */
 function makeElement(overrides = {}) {
   return Object.assign({
@@ -88,6 +100,7 @@ function setupIntercept({
   versions = [],
   saveElement = null,
   pubElement = null,
+  schemas = ELEMENT_SCHEMAS,
 } = {}) {
   cy.intercept('POST', '/graphql', (req) => {
     const isBatch = Array.isArray(req.body)
@@ -107,6 +120,9 @@ function setupIntercept({
       }
       if (query.includes('pubElement')) {
         return { data: { pubElement: pubElement || { id: '1' } } }
+      }
+      if (query.includes('schemas')) {
+        return { data: { schemas } }
       }
       // Versions query (contains 'versions')
       if (query.includes('versions')) {
@@ -294,6 +310,27 @@ describe('Element Detail', () => {
     visitElementDetail()
     cy.get('.element-details').should('contain', 'Name')
     cy.get('.element-details').should('contain', 'Language')
+  })
+
+  it('loads fields for a shared contact element', () => {
+    const data = JSON.stringify({
+      name: 'Contact form',
+      type: 'contact',
+      lang: 'en',
+      data: { title: 'Contact us' },
+    })
+
+    visitElementDetail(
+      {
+        name: 'Contact form',
+        type: 'contact',
+        latest: { ...makeElement().latest, data },
+      },
+      { latest: { ...makeElementDetail().latest, data } }
+    )
+
+    detailView().find('.label').should('contain', 'title')
+    detailView().find('textarea').should('have.value', 'Contact us')
   })
 
   // ---- Permission-based behavior ----
