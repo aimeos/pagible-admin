@@ -246,11 +246,18 @@ export default {
     <v-container>
       <v-sheet class="box scroll">
         <v-tabs v-if="tabNames.length" fixed-tabs v-model="activeTab" class="subtabs">
-          <v-tab value="roles">{{ $gettext('Roles') }}</v-tab>
           <v-tab value="users">{{ $gettext('Users') }}</v-tab>
+          <v-tab value="roles">{{ $gettext('Roles') }}</v-tab>
         </v-tabs>
 
         <v-window v-model="activeTab" :touch="false" :disabled="!tabNames.length">
+          <v-window-item v-if="canManageUsers" value="users">
+            <AccessUsers
+              :roles="items"
+              :roles-loading="loading"
+            />
+          </v-window-item>
+
           <v-window-item v-if="canAccess" value="roles">
             <div class="access-roles">
               <div class="header">
@@ -313,13 +320,6 @@ export default {
 
               <p v-else class="notfound">{{ $gettext('No entries found') }}</p>
             </div>
-          </v-window-item>
-
-          <v-window-item v-if="canManageUsers" value="users">
-            <AccessUsers
-              :roles="items"
-              :roles-loading="loading"
-            />
           </v-window-item>
         </v-window>
       </v-sheet>

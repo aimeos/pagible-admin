@@ -25,8 +25,8 @@ export default {
           icon: mdiShareVariant,
           label: this.$gettext('Shared elements')
         },
-        { permission: 'file:view', path: '/files', icon: mdiFolderMultipleImage, label: this.$gettext('Files') },
-        { permission: 'access:view', path: '/access', icon: mdiKeyVariant, label: this.$gettext('Access') }
+        { permission: 'file:view', path: '/files', icon: mdiFolderMultipleImage, label: this.$gettext('Media') },
+        { permission: 'access:view', path: '/access', icon: mdiKeyVariant, label: this.$gettext('Users') }
       ]
     }
   },
@@ -65,8 +65,9 @@ export default {
 </template>
 
 <style scoped>
-.v-navigation-drawer {
-  border-top-right-radius: 8px;
+.v-navigation-drawer--left {
+  background-color: rgb(var(--v-theme-background));
+  border-top-right-radius: 0;
 }
 
 .v-locale--is-rtl .v-navigation-drawer {
