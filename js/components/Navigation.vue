@@ -67,7 +67,7 @@ export default {
 <style scoped>
 .v-navigation-drawer--left {
   background-color: rgb(var(--v-theme-background));
-  border-top-right-radius: 0;
+  border: none;
 }
 
 .v-locale--is-rtl .v-navigation-drawer {
