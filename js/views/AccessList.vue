@@ -76,22 +76,20 @@ export default {
 
   computed: {
     tabNames() {
-      return this.canAccess && this.canManageUsers ? ['roles', 'users'] : []
+      return this.canAccess && this.canManageUsers ? ['users', 'roles'] : []
     },
 
     activeTab: {
       get() {
-        return this.$route.name === 'access:users' || this.$route.query?.tab === 'users'
-          ? 'users'
-          : 'roles'
+        return this.canManageUsers && this.$route.query?.tab !== 'roles' ? 'users' : 'roles'
       },
       set(value) {
-        const query = value === 'users' ? { ...this.$route.query, tab: 'users' } : { ...this.$route.query }
-        if (value !== 'users') {
+        const query = value === 'roles' ? { ...this.$route.query, tab: 'roles' } : { ...this.$route.query }
+        if (value !== 'roles') {
           delete query.tab
         }
 
-        if (this.$route.query?.tab === query.tab && this.$route.name !== 'access:users') return
+        if (this.$route.query?.tab === query.tab) return
 
         this.$router.replace({ name: this.$route.name, query })
       }

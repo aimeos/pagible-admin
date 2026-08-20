@@ -19,13 +19,8 @@ export default {
     builtins() {
       return [
         { permission: 'page:view', path: '/pages', icon: mdiFileTree, label: this.$gettext('Pages') },
-        {
-          permission: 'element:view',
-          path: '/elements',
-          icon: mdiShareVariant,
-          label: this.$gettext('Shared elements')
-        },
         { permission: 'file:view', path: '/files', icon: mdiFolderMultipleImage, label: this.$gettext('Media') },
+        { permission: 'element:view', path: '/elements', icon: mdiShareVariant, label: this.$gettext('Shared elements') },
         { permission: 'access:view', path: '/access', icon: mdiKeyVariant, label: this.$gettext('Users') }
       ]
     }
