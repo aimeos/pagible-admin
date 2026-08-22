@@ -63,7 +63,9 @@ describe('PageDetailMetrics', () => {
 
   it('renders the weekly insights card', () => {
     mountMetrics()
-    cy.contains('Weekly Insights').should('exist')
+    cy.contains('.v-card-title', 'Weekly Insights')
+      .parents('.v-card')
+      .should('not.have.class', 'emphasis-bg')
   })
 
   it('shows dash when no data is available', () => {

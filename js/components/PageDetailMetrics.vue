@@ -422,7 +422,7 @@ export default {
       <!-- Overview -->
       <v-row>
         <v-col cols="12">
-          <v-card class="panel emphasis-bg">
+          <v-card class="panel">
             <v-card-title>{{ $gettext('Weekly Insights') }}</v-card-title>
             <v-card-text>
               <v-row>
