@@ -104,6 +104,12 @@ input:-webkit-autofill:focus {
   color: rgb(var(--v-theme-error));
 }
 
+.v-form,
+.v-window,
+.v-window-item {
+  height: 100%;
+}
+
 .v-window,
 .v-container {
   background-color: transparent;
