@@ -67,11 +67,15 @@ describe('PageDetailMetrics', () => {
       .closest('.v-card')
       .should('have.class', 'emphasis-bg')
       .then(($card) => {
-        $card[0].style.setProperty('--v-theme-background', '30, 41, 59')
-        $card[0].style.setProperty('--v-theme-on-background', '255, 255, 255')
+        $card[0].style.setProperty('--v-theme-emphasis', '248, 250, 252')
+        $card[0].style.setProperty('--v-theme-on-emphasis', '15, 23, 42')
+        $card[0].style.setProperty('--v-medium-emphasis-opacity', '1')
       })
-      .should('have.css', 'background-color', 'rgb(30, 41, 59)')
-      .and('have.css', 'color', 'rgb(255, 255, 255)')
+      .should('have.css', 'background-color', 'rgb(248, 250, 252)')
+      .and('have.css', 'color', 'rgb(15, 23, 42)')
+      .find('.text-medium-emphasis')
+      .first()
+      .should('have.css', 'color', 'rgb(15, 23, 42)')
   })
 
   it('shows dash when no data is available', () => {
