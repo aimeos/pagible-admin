@@ -77,8 +77,7 @@ export function handleError({ errors, networkError }) {
 
   if (!unauthorized) return
 
-<<<<<<< Updated upstream
-  useUserStore().me = null
+  useUserStore().me = false
   apolloClient.clearStore().catch((error) => console.error('Failed to clear Apollo cache', error))
   router.push({ name: 'login' })
 }
@@ -87,14 +86,10 @@ export function handleError({ errors, networkError }) {
 export function invalidatePages(cache) {
   cache.evict({ id: 'ROOT_QUERY', fieldName: 'pages' })
   cache.gc()
-=======
-  useUserStore().me = false
-  router.push({ name: 'login' })
 }
 
 export function retry(error) {
   return !!error && error.statusCode !== 419
->>>>>>> Stashed changes
 }
 
 const lazyUploadLink = new ApolloLink((operation, forward) => {

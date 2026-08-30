@@ -1,11 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia'
 import router from '../../../js/routes'
 import { useUserStore } from '../../../js/stores'
-<<<<<<< Updated upstream
-import { apolloClient, graphqlFetch, handleError, invalidatePages } from '../../../js/graphql'
-=======
-import { graphqlFetch, handleError, retry } from '../../../js/graphql'
->>>>>>> Stashed changes
+import { apolloClient, graphqlFetch, handleError, invalidatePages, retry } from '../../../js/graphql'
 
 describe('handleError()', () => {
   beforeEach(() => {
@@ -21,12 +17,8 @@ describe('handleError()', () => {
 
     handleError({ networkError: { statusCode: 419 } })
 
-<<<<<<< Updated upstream
-    expect(user.me).to.equal(null)
-    cy.get('@clearStore').should('have.been.calledOnce')
-=======
     expect(user.me).to.equal(false)
->>>>>>> Stashed changes
+    cy.get('@clearStore').should('have.been.calledOnce')
     cy.get('@routerPush').should('have.been.calledOnceWith', { name: 'login' })
   })
 })
