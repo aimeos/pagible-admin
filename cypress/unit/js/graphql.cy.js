@@ -1,4 +1,37 @@
-import { graphqlFetch } from '../../../js/graphql'
+import { createPinia, setActivePinia } from 'pinia'
+import router from '../../../js/routes'
+import { useUserStore } from '../../../js/stores'
+import { apolloClient, graphqlFetch, handleError, invalidatePages, retry } from '../../../js/graphql'
+
+describe('handleError()', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  it('redirects to login on an HTTP 419 error', () => {
+    const user = useUserStore()
+    user.me = { id: 'user-1' }
+
+    cy.stub(apolloClient, 'clearStore').as('clearStore').resolves()
+    cy.stub(router, 'push').as('routerPush').resolves()
+
+    handleError({ networkError: { statusCode: 419 } })
+
+    expect(user.me).to.equal(false)
+    cy.get('@clearStore').should('have.been.calledOnce')
+    cy.get('@routerPush').should('have.been.calledOnceWith', { name: 'login' })
+  })
+})
+
+describe('retry()', () => {
+  it('does not retry HTTP 419 errors', () => {
+    expect(retry({ statusCode: 419 })).to.equal(false)
+  })
+
+  it('retries other transport errors', () => {
+    expect(retry(new Error('Network failure'))).to.equal(true)
+  })
+})
 
 describe('graphqlFetch()', () => {
   it('passes successful responses through', () => {
@@ -58,5 +91,17 @@ describe('graphqlFetch()', () => {
         expect(error.message).to.equal('HTTP 500')
       },
     )
+  })
+})
+
+describe('invalidatePages()', () => {
+  it('removes every page list variant', () => {
+    const evict = cy.stub()
+    const gc = cy.stub()
+
+    invalidatePages({ evict, gc })
+
+    expect(evict).to.have.been.calledWith({ id: 'ROOT_QUERY', fieldName: 'pages' })
+    expect(gc).to.have.been.calledOnce
   })
 })

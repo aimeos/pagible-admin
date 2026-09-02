@@ -17,7 +17,7 @@ const MESSAGE_HEADERS = ['x-error-message', 'x-status-message', 'x-message']
 
 const retryLink = new RetryLink({
   delay: { initial: 300, max: 5000, jitter: true },
-  attempts: { max: 2, retryIf: (error) => !!error }
+  attempts: { max: 2, retryIf: retry }
 })
 
 // Forwards Laravel's XSRF-TOKEN cookie as the X-XSRF-TOKEN header so cookie
@@ -51,21 +51,7 @@ const socketLink = new ApolloLink((operation, forward) => {
   return forward(operation)
 })
 
-const errorLink = onError(({ errors }) => {
-  if (!errors) return
-
-  for (const err of errors) {
-    if (
-      err.message === 'This action is unauthorized.' ||
-      err.extensions?.code === 'UNAUTHENTICATED' ||
-      err.extensions?.http?.status === 401
-    ) {
-      useUserStore().me = null
-      router.push({ name: 'login' })
-      break
-    }
-  }
-})
+const errorLink = onError(handleError)
 
 let uploadLink = null
 
@@ -81,6 +67,29 @@ export function graphqlFetch(input, init) {
 
     return response
   })
+}
+
+export function handleError({ errors, networkError }) {
+  const unauthorized = networkError?.statusCode === 419 || errors?.some((err) =>
+    err.extensions?.code === 'UNAUTHENTICATED' ||
+    err.extensions?.http?.status === 401
+  )
+
+  if (!unauthorized) return
+
+  useUserStore().me = false
+  apolloClient.clearStore().catch((error) => console.error('Failed to clear Apollo cache', error))
+  router.push({ name: 'login' })
+}
+
+/** Removes every cached page-list variant. */
+export function invalidatePages(cache) {
+  cache.evict({ id: 'ROOT_QUERY', fieldName: 'pages' })
+  cache.gc()
+}
+
+export function retry(error) {
+  return !!error && error.statusCode !== 419
 }
 
 const lazyUploadLink = new ApolloLink((operation, forward) => {
