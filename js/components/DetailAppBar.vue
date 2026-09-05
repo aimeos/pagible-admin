@@ -182,7 +182,7 @@ export default {
             <v-btn @click="publish()" variant="flat" class="menu-publish-now" color="primary" :disabled="error" block>
               {{ $gettext('Publish') }}
             </v-btn>
-            <v-btn @click="publish(true)" variant="flat" class="menu-publish-now" color="primary" :disabled="error" block>
+            <v-btn @click="publish(true)" variant="flat" class="menu-publish-close" color="primary" :disabled="error" block>
               {{ $gettext('Publish & Close') }}
             </v-btn>
           </v-card-actions>
@@ -212,7 +212,7 @@ export default {
               :disabled="!publishAt || error"
               :color="publishAt ? 'primary' : ''"
               variant="flat"
-              class="menu-publish-at"
+              class="menu-schedule-at"
               block
               >{{ $gettext('Schedule') }}</v-btn
             >
@@ -221,7 +221,7 @@ export default {
               :disabled="!publishAt || error"
               :color="publishAt ? 'primary' : ''"
               variant="flat"
-              class="menu-publish-at"
+              class="menu-schedule-close"
               block
               >{{ $gettext('Schedule & Close') }}</v-btn
             >
