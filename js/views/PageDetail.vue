@@ -465,16 +465,12 @@ export default {
       this.dirty.page = true
     },
 
-    publish(at = null) {
+    publish(at = null, close = false) {
       publishItem(this, 'page', {
         success: this.$gettext('Page published successfully'),
         scheduled: (d) => this.$gettext('Page scheduled for publishing at %{date}', { date: d.toLocaleDateString() }),
         error: this.$gettext('Error publishing page')
-      }, at)
-    },
-
-    published() {
-      this.publish(publishDate(this.publishAt, this.publishTime))
+      }, at, close)
     },
 
     reset() {
@@ -588,6 +584,10 @@ export default {
         .finally(() => {
           this.saving = false
         })
+    },
+
+    schedule(close = false) {
+      this.publish(publishDate(this.publishAt, this.publishTime), close)
     },
 
     async translatePage(lang) {
@@ -785,8 +785,8 @@ export default {
     v-model:publish-at="publishAt"
     v-model:publish-time="publishTime"
     @save="save()"
-    @publish="publish()"
-    @schedule="published"
+    @publish="publish(null, $event)"
+    @schedule="schedule($event)"
     @history="vhistory = true"
     @changes="vchanged = true"
   >
