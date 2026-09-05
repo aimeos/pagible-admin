@@ -473,6 +473,10 @@ export default {
       }, at, close)
     },
 
+    schedule(close = false) {
+      this.publish(publishDate(this.publishAt, this.publishTime), close)
+    },
+
     reset() {
       this.$refs.page?.reset()
       this.$refs.content?.reset()
