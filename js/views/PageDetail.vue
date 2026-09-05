@@ -590,10 +590,6 @@ export default {
         })
     },
 
-    schedule(close = false) {
-      this.publish(publishDate(this.publishAt, this.publishTime), close)
-    },
-
     async translatePage(lang) {
       if (!this.user.can('text:translate')) {
         this.messages.add(this.$gettext('Permission denied'), 'error')
