@@ -206,7 +206,7 @@ export default {
             </v-timeline-item>
             <v-timeline-item v-else-if="failed" dot-color="error" size="small" width="100%">
               <div role="alert">{{ $gettext('Error fetching versions') }}</div>
-              <v-btn variant="text" @click="fetch">{{ $gettext('Retry') }}</v-btn>
+              <v-btn variant="outlined" @click="fetch">{{ $gettext('Retry') }}</v-btn>
             </v-timeline-item>
             <v-timeline-item v-else-if="!cards.length" dot-color="grey-lighten-1" size="small" width="100%">
               <span role="status">{{ $gettext('No changes') }}</span>
@@ -303,7 +303,7 @@ export default {
                 <section v-if="card.remaining.before.length || card.remaining.after.length" class="diff-section" :aria-label="$gettext('Media')"
                 >
                   <h3 class="section-header">{{ $gettext('Media') }}</h3>
-                  <HistoryField :field="{ media: card.remaining }" :raw-details="false" />
+                  <HistoryField :field="{ media: card.remaining }" />
                 </section>
                 <div v-if="!card.keys.length && !card.fileCount" role="status">{{ $gettext('No changes') }}</div>
                 </v-expansion-panel-text>

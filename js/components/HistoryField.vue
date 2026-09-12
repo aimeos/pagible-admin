@@ -8,7 +8,6 @@ import { fileurl, filesrcset } from '../utils'
 export default {
   props: {
     field: { type: Object, required: true },
-    rawDetails: { type: Boolean, default: true },
     type: { type: String, default: '' }
   },
 
@@ -74,7 +73,7 @@ export default {
         <div class="media-pair" :class="{ 'single-media': positions(row).length === 1 }">
           <div v-for="position in positions(row)" :key="position" class="media-side">
             <div v-if="row.kind !== 'unchanged' || row.moved" class="media-label">
-              {{ position === 'before' ? $gettext('Old value') : $gettext('New value') }}
+              {{ position === 'before' ? $gettext('Previous value') : $gettext('New value') }}
             </div>
             <div v-if="!row[position]" class="empty-media">---</div>
             <figure v-else class="file" :class="row.kind === 'unchanged' ? '' : position === 'before' ? 'removed' : 'added'">
@@ -107,7 +106,7 @@ export default {
           </v-toolbar>
           <v-card-text>
             <p class="media-label">
-              {{ preview.position === 'before' ? $gettext('Old value') : $gettext('New value') }} · {{ name(preview.file) }}
+              {{ preview.position === 'before' ? $gettext('Previous value') : $gettext('New value') }} · {{ name(preview.file) }}
             </p>
             <v-img v-if="fileurl(preview.file)" :src="fileurl(preview.file)" :alt="name(preview.file)" height="60vh">
               <template #placeholder><div class="media-loading" role="status"><v-progress-circular indeterminate size="24" aria-hidden="true" />{{ $gettext('Loading preview') }}</div></template>
@@ -120,7 +119,7 @@ export default {
     </div>
     <div v-if="table" class="table-preview diff-columns">
       <div v-for="(position, index) in ['before', 'after']" :key="position" :class="index ? 'change-new' : 'change-old'">
-        <div class="side-label">{{ index ? $gettext('New value') : $gettext('Old value') }}</div>
+        <div class="side-label">{{ index ? $gettext('New value') : $gettext('Previous value') }}</div>
         <div class="table-scroll">
           <table :aria-label="$gettext('Table preview')" :style="{ '--columns': table.cols }">
             <tbody>
@@ -137,15 +136,14 @@ export default {
         </div>
       </div>
     </div>
-    <details v-if="rawDetails" class="raw-details" :open="!rows.length && !table">
-      <summary v-if="rows.length || table">{{ $gettext('Show raw details') }}</summary>
+    <div v-if="!rows.length && !table" class="raw-value">
       <div class="diff-columns">
         <div v-for="(position, index) in ['before', 'after']" :key="position" :class="index ? 'change-new' : 'change-old'">
-          <div class="side-label">{{ index ? $gettext('New value') : $gettext('Old value') }}</div>
+          <div class="side-label">{{ index ? $gettext('New value') : $gettext('Previous value') }}</div>
           <pre><span v-for="(part, partIndex) in values[position]" :key="partIndex" :class="{ highlight: part[index ? 'added' : 'removed'], whitespace: space(part) }" :data-space="space(part)"><span>{{ part.value }}</span></span></pre>
         </div>
       </div>
-    </details>
+    </div>
   </div>
 </template>
 
@@ -276,14 +274,9 @@ export default {
   outline: 2px solid rgb(var(--v-theme-primary));
 }
 
-.raw-details {
+.raw-value {
   margin-top: 8px;
   font-size: 0.85rem;
-}
-
-.raw-details summary {
-  cursor: pointer;
-  padding: 6px 0;
 }
 
 .change-old, .change-new {

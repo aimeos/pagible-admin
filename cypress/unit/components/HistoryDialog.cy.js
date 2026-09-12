@@ -31,7 +31,7 @@ function mountDialog(props = {}) {
 }
 
 const mountMedia = (before = [], after = []) => cy.mount(HistoryField, {
-  props: { field: { media: { before, after } }, rawDetails: false }, global: { stubs }
+  props: { field: { media: { before, after } } }, global: { stubs }
 })
 
 describe('HistoryDialog', () => {
@@ -55,15 +55,15 @@ describe('HistoryDialog', () => {
     cy.get('@apply').should('have.been.calledOnce').then(spy => expect(spy.firstCall.args[0]).to.deep.equal(older.data))
   })
 
-  it('shows raw field details without a rendered preview and restores only the selected field with its original markup', () => {
+  it('shows raw field values without a rendered preview and restores only the selected field with its original markup', () => {
     cy.viewport(390, 844)
     const before = '<p>Plans</p><table><tr><th>Name</th><th>Price</th></tr><tr><td>Basic</td><td>10</td></tr></table>'
     const after = '<p>Plans</p><table><tr><th>Name</th><th>Region</th><th>Price</th></tr><tr><td>Basic</td><td>EU</td><td>15</td></tr></table>'
     mountDialog({ current: { data: { text: before, title: 'Current' } },
       versions: [{ data: { text: after, title: 'Saved' } }], onApply: cy.spy().as('apply') })
     cy.contains('.diff-group', 'text').within(() => {
-      cy.get('details.raw-details[open]').should('be.visible').find('summary').should('not.exist')
-      cy.get('.raw-details .diff-columns').should('be.visible')
+      cy.get('.raw-value .diff-columns').should('be.visible')
+      cy.get('details, summary').should('not.exist')
       cy.get('.change-new pre').should('have.text', before)
       cy.get('.change-old pre').should('have.text', after)
     })
@@ -73,7 +73,7 @@ describe('HistoryDialog', () => {
     cy.get('@apply').should('have.been.calledOnce').then(spy => expect(spy.firstCall.args[0]).to.deep.equal({ text: after }))
   })
 
-  it('shows shortened table previews with context and keeps the full raw diff available', () => {
+  it('shows shortened table previews with context without duplicate raw values', () => {
     const saved = Array.from({ length: 12 }, (_, index) => ['Row ' + (index + 1), 'Value ' + (index + 1)])
     const current = saved.map(row => [...row])
     current[5][1] = 'Current value'
@@ -92,8 +92,7 @@ describe('HistoryDialog', () => {
       cy.get('.table-preview').should('not.contain', 'Row 2').and('not.contain', 'Row 12')
       cy.get('.change-old .table-cell.highlight').should('have.text', 'Value 6')
       cy.get('.change-new .table-cell.highlight').should('have.text', 'Current value')
-      cy.get('details.raw-details').should('not.have.attr', 'open')
-      cy.get('details.raw-details').invoke('text').should('contain', 'Current value')
+      cy.get('.raw-value, details, summary').should('not.exist')
     })
   })
 
@@ -103,8 +102,8 @@ describe('HistoryDialog', () => {
     const onApply = cy.spy().as('apply')
     mountDialog({ current: { data: { publish_at: before, title: 'Current title', content: content('current-id') } },
       versions: [{ data: { publish_at: after, title: 'Saved title', content: content('saved-id') } }], onApply })
-    cy.get('.diff-group[aria-label="publish at"] .raw-details .change-new pre').should('have.text', before)
-    cy.get('.diff-group[aria-label="publish at"] .raw-details .change-old pre').should('have.text', after)
+    cy.get('.diff-group[aria-label="publish at"] .raw-value .change-new pre').should('have.text', before)
+    cy.get('.diff-group[aria-label="publish at"] .raw-value .change-old pre').should('have.text', after)
     cy.get('.diff-group[aria-label="title"] input').uncheck()
     cy.contains('button', 'Revert selected changes').click()
     cy.get('@apply').should('have.been.calledOnce').then(spy => {
@@ -121,8 +120,8 @@ describe('HistoryDialog', () => {
       versions: [{ data: { content: [block('2026-09-09T12:00:00+02:00')], value: '1' } }] })
     cy.get('.diff-group[aria-label="release date"] .change-new pre').should('have.text', '2026-09-09T10:00:00Z')
     cy.get('.diff-group[aria-label="release date"] .change-old pre').should('have.text', '2026-09-09T12:00:00+02:00')
-    cy.get('.diff-group[aria-label="value"] .raw-details .change-new pre').should('have.text', '1')
-    cy.get('.diff-group[aria-label="value"] .raw-details .change-old pre').should('have.text', '"1"')
+    cy.get('.diff-group[aria-label="value"] .raw-value .change-new pre').should('have.text', '1')
+    cy.get('.diff-group[aria-label="value"] .raw-value .change-old pre').should('have.text', '"1"')
   })
   it('shows only previews and filenames when file metadata changes', () => {
     const file = { id: 'photo', name: 'Team.jpg', path: 'team.jpg', mime: 'image/jpeg', previews: { 320: 'small.jpg', 640: 'medium.jpg' } }
@@ -295,12 +294,13 @@ describe('HistoryDialog', () => {
     cy.contains('button', 'Revert selected changes').should('be.disabled')
   })
 
-  it('shows rich text in inert raw details when no preview is rendered', () => {
+  it('shows rich text as inert raw values when no preview is rendered', () => {
     mountDialog({
       current: { data: { text: '<p>Hello <em>world</em></p><script>window.historyInjected=true</script>' } },
       versions: [{ data: { text: '<p>Hello <strong>world</strong></p>' } }]
     })
-    cy.get('details.raw-details[open]').should('exist').find('summary').should('not.exist')
+    cy.get('.raw-value').should('exist')
+    cy.get('details, summary').should('not.exist')
     cy.get('.change-old pre').scrollIntoView().should('be.visible').and('have.text', '<p>Hello <strong>world</strong></p>')
     cy.get('.change-new pre').scrollIntoView().should('be.visible').and('contain', '<script>window.historyInjected=true</script>')
     cy.get('.version-diffs script, .version-diffs em, .version-diffs strong').should('not.exist')
@@ -323,7 +323,7 @@ describe('HistoryDialog', () => {
     const load = cy.stub().onFirstCall().rejects(new Error('Unavailable')).onSecondCall().resolves([])
     mountDialog({ load })
     cy.get('[role="alert"]').should('contain', 'Error fetching versions')
-    cy.contains('button', 'Retry').click()
+    cy.contains('button.v-btn--variant-outlined', 'Retry').click()
     cy.contains('No changes').should('exist')
   })
   it('uses schema labels and rich text excerpts to identify blocks', () => {
@@ -351,7 +351,7 @@ describe('HistoryDialog', () => {
     cy.contains('.diff-block', 'New title').find('.block-check [aria-checked="mixed"]').should('exist')
   })
 
-  it('places media and raw details under the changed field', () => {
+  it('places media under the changed field without duplicate raw values', () => {
     const data = id => ({ type: 'hero', data: { image: { type: 'file', id } } })
     mountDialog({
       schemas: { content: { hero: { fields: { image: { type: 'image', label: 'Hero image' } } } } },
@@ -361,10 +361,7 @@ describe('HistoryDialog', () => {
     cy.contains('.diff-group', 'Hero image').within(() => {
       cy.get('.file.added').should('contain', 'new.jpg')
       cy.get('.file.removed').should('contain', 'old.jpg')
-      cy.get('.raw-details').should('not.have.attr', 'open')
-      cy.get('.raw-details .diff-columns').should('not.be.visible')
-      cy.get('.raw-details summary').click()
-      cy.get('.raw-details .diff-columns').should('be.visible').and('contain', '"id": "old"').and('contain', '"id": "new"')
+      cy.get('.raw-value, details, summary').should('not.exist')
     })
     cy.get('.version-diffs > .diff-section > .media-list').should('not.exist')
   })
@@ -382,7 +379,7 @@ describe('HistoryDialog', () => {
     cy.contains('button', 'Revert selected changes').should('be.visible')
   })
 
-  it('shows old values on the left and new values on the right', () => {
+  it('shows previous values on the left and new values on the right', () => {
     mountDialog({
       current: { data: { title: 'Unsaved', content: [textBlock('new')] } },
       versions: [{ data: { title: 'Saved', content: [textBlock('old')] } }]
@@ -469,14 +466,14 @@ describe('HistoryDialog', () => {
     cy.get('.diff-group[aria-label="title"]').should('have.class', 'is-unselected').and('contain', 'Keep current value')
     cy.get('.diff-group[aria-label="title"] .change-new .highlight').should('have.css', 'text-decoration-line', 'none')
     cy.get('.diff-block').should('have.class', 'is-unselected').and('not.contain', 'Keep current value')
-    cy.get('.change-old').should('contain', 'Old value')
+    cy.get('.change-old').should('contain', 'Previous value')
     cy.get('.change-new').should('contain', 'New value')
     cy.get('.diff-group[aria-label="title"] input').check()
     cy.get('.diff-group[aria-label="title"]').should('not.have.class', 'is-unselected')
-      .and('contain', 'Old value').and('contain', 'New value')
+      .and('contain', 'Previous value').and('contain', 'New value')
   })
 
-  it('shows shared element names with IDs in raw details', () => {
+  it('shows shared element names with IDs in raw values', () => {
     mountDialog({
       current: { data: { content: [{ type: 'reference', refid: 'new-uuid' }] }, elements: [{ id: 'new-uuid', name: 'New campaign' }] },
       versions: [{ data: { content: [{ type: 'reference', refid: 'old-uuid' }] }, elements: [{ id: 'old-uuid', name: 'Original campaign' }] }]
@@ -485,8 +482,7 @@ describe('HistoryDialog', () => {
     cy.contains('.block-title', 'Shared element: Original campaign').should('exist')
     cy.get('.block-title').should('not.contain', 'uuid')
     cy.get('.diff-block .diff-group').should('have.length', 4)
-    cy.contains('.diff-block', 'New campaign').find('.diff-group[aria-label="Shared element"] .raw-details').within(() => {
-      cy.root().should('match', 'details').and('have.attr', 'open')
+    cy.contains('.diff-block', 'New campaign').find('.diff-group[aria-label="Shared element"] .raw-value').within(() => {
       cy.get('.diff-columns').scrollIntoView().should('be.visible').and('contain', 'new-uuid')
     })
   })
@@ -660,7 +656,7 @@ describe('History media', () => {
     mountMedia([saved], [current])
     cy.get('.file.removed figcaption').should('have.text', 'Old campaign')
     cy.get('.file.added figcaption').should('have.text', 'New campaign')
-    cy.get('.media-label').first().should('have.text', 'Old value')
+    cy.get('.media-label').first().should('have.text', 'Previous value')
     cy.get('.media-label').last().should('have.text', 'New value')
     cy.get('.media-row').should('not.contain', 'image/jpeg').and('not.contain', 'old.jpg').and('not.contain', 'new.jpg')
     cy.get('.media-pair').children().then(sides => {
