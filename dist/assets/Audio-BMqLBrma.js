@@ -1,0 +1,1 @@
+import e from"./File-Gzqnuy-m.js";var t={extends:e,setup:e.setup,computed:{kind(){return`audio`}}};export{t as default};
