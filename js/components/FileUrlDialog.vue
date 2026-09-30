@@ -207,7 +207,7 @@ export default {
       :error-messages="errors"
       :append-inner-icon="input ? mdiCheck : ''"
       :placeholder="$gettext('Enter one URL per line')"
-      :hint="$gettext('Files are downloaded from these URLs and added to the media list')"
+      :label="$gettext('URLs') + ' ‒ ' + $gettext('Files are downloaded from these URLs and added to the media list')"
       variant="outlined"
       autofocus
       auto-grow
@@ -224,7 +224,7 @@ export default {
       :error-messages="errors"
       :append-inner-icon="input ? mdiCheck : ''"
       :placeholder="$gettext('Enter URL')"
-      :hint="$gettext('The file is downloaded from this URL and added to the media list')"
+      :label="$gettext('URL') + ' ‒ ' + $gettext('The file is downloaded from this URL and added to the media list')"
       variant="outlined"
       maxlength="255"
       counter="255"
@@ -296,7 +296,7 @@ export default {
 
 .items.grid .v-list-item {
   grid-template-rows: max-content;
-  border: 1px solid rgb(var(--v-theme-primary));
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
 
 .items.grid .item-preview {
