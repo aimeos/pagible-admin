@@ -1,1 +1,0 @@
-import e from"./File-Ds1w__uF.js";var t={extends:e,setup:e.setup,computed:{kind(){return`audio`}}};export{t as default};

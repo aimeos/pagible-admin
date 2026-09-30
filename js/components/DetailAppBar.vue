@@ -341,6 +341,16 @@ export default {
   padding: 12px 16px;
 }
 
+.publish-menu-actions .v-btn :deep(.v-btn__content) {
+  color: rgb(var(--v-theme-on-background));
+}
+
+/* The menu background is dark in both themes: use the lighter nav tint like the app bar */
+.publish-menu-actions .v-btn.text-primary:not(.v-btn--disabled) :deep(.v-btn__underlay) {
+  background-color: rgb(var(--v-theme-nav-accent, var(--v-theme-primary)));
+  opacity: 0.45;
+}
+
 .publish-menu-schedule {
   padding: 16px;
 }
