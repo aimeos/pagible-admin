@@ -395,6 +395,11 @@ input:-webkit-autofill:focus {
   border-radius: inherit;
 }
 
+/* The absolute tint layer would otherwise paint over the (static) label and tint the text */
+.v-btn > :is(.v-btn__content, .v-btn__prepend, .v-btn__append) {
+  position: relative;
+}
+
 /* Tactile press feedback on all buttons */
 .v-btn {
   transition-property: transform, box-shadow, opacity, background;
