@@ -1,1 +1,0 @@
-import e from"./File-BplO5n0V.js";var t={extends:e,setup:e.setup,computed:{kind(){return`video`}}};export{t as default};
