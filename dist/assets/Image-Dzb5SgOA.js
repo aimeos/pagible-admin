@@ -1,0 +1,1 @@
+import e from"./File-BNJQRGGZ.js";var t={extends:e,setup:e.setup,computed:{kind:()=>`image`}};export{t as default};
