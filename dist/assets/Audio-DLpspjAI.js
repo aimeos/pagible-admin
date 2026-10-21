@@ -1,1 +1,0 @@
-import e from"./File-V3iVf_sn.js";var t={extends:e,setup:e.setup,computed:{kind:()=>`audio`}};export{t as default};

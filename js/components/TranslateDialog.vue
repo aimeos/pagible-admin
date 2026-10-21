@@ -108,7 +108,7 @@ export default {
       />
     </div>
 
-    <p v-if="nothing" class="hint nothing">{{ $gettext('The selected pages are already translated into all languages.') }}</p>
+    <p v-if="nothing" class="hint nothing">{{ $gettext('Nothing to translate, the pages are up to date or already being translated') }}</p>
 
     <p class="hint">
       {{ $ngettext('%{num} page selected.', '%{num} pages selected.', count, { num: count }) }}
