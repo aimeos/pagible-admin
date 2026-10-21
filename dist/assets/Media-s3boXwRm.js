@@ -1,0 +1,1 @@
+import e from"./File-C6Soskax.js";var t={extends:e,setup:e.setup,computed:{kind:()=>`media`}};export{t as default};
