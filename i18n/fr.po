@@ -2908,8 +2908,8 @@ msgid "Error: %{msg}"
 msgstr "Erreur : %{msg}"
 
 #: js/views/PageDetail.vue:508 js/views/PageDetail.vue:672
-msgid "Rate this page and suggest improvements"
-msgstr "Évalue cette page et propose des améliorations"
+msgid "Score this page 1–10 per area (content quality, readability, SEO, UX, engagement) and suggest improvements"
+msgstr "Note cette page de 1 à 10 par domaine (qualité du contenu, lisibilité, SEO, UX, engagement) et propose des améliorations"
 
 #: js/views/PageDetail.vue:515
 msgid "Please wait until the language is switched"

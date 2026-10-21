@@ -2934,8 +2934,8 @@ msgid "Error: %{msg}"
 msgstr "Napaka: %{msg}"
 
 #: js/views/PageDetail.vue:508 js/views/PageDetail.vue:672
-msgid "Rate this page and suggest improvements"
-msgstr "Oceni to stran in predlagaj izboljšave"
+msgid "Score this page 1–10 per area (content quality, readability, SEO, UX, engagement) and suggest improvements"
+msgstr "Oceni to stran od 1 do 10 po posameznih področjih (kakovost vsebine, berljivost, SEO, UX, angažiranost) in predlagaj izboljšave"
 
 #: js/views/PageDetail.vue:515
 msgid "Please wait until the language is switched"

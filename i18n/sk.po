@@ -2907,8 +2907,8 @@ msgid "Error: %{msg}"
 msgstr "Chyba: %{msg}"
 
 #: js/views/PageDetail.vue:508 js/views/PageDetail.vue:672
-msgid "Rate this page and suggest improvements"
-msgstr "Ohodnoť túto stránku a navrhni vylepšenia"
+msgid "Score this page 1–10 per area (content quality, readability, SEO, UX, engagement) and suggest improvements"
+msgstr "Ohodnoť túto stránku v každej oblasti na stupnici 1–10 (kvalita obsahu, čitateľnosť, SEO, UX, zapojenie) a navrhni vylepšenia"
 
 #: js/views/PageDetail.vue:515
 msgid "Please wait until the language is switched"

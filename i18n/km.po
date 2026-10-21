@@ -2829,8 +2829,8 @@ msgid "Error: %{msg}"
 msgstr "កំហុស: %{msg}"
 
 #: js/views/PageDetail.vue:508 js/views/PageDetail.vue:672
-msgid "Rate this page and suggest improvements"
-msgstr "វាយតម្លៃទំព័រនេះ និងស្នើការកែលម្អ"
+msgid "Score this page 1–10 per area (content quality, readability, SEO, UX, engagement) and suggest improvements"
+msgstr "ដាក់ពិន្ទុទំព័រនេះពី 1–10 តាមផ្នែកនីមួយៗ (គុណភាពមាតិកា ភាពងាយស្រួលអាន SEO UX ការចូលរួម) និងស្នើការកែលម្អ"
 
 #: js/views/PageDetail.vue:515
 msgid "Please wait until the language is switched"

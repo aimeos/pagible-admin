@@ -2891,8 +2891,8 @@ msgid "Error: %{msg}"
 msgstr "Fout: %{msg}"
 
 #: js/views/PageDetail.vue:508 js/views/PageDetail.vue:672
-msgid "Rate this page and suggest improvements"
-msgstr "Beoordeel deze pagina en stel verbeteringen voor"
+msgid "Score this page 1–10 per area (content quality, readability, SEO, UX, engagement) and suggest improvements"
+msgstr "Geef deze pagina per onderdeel een score van 1–10 (kwaliteit van de inhoud, leesbaarheid, SEO, UX, betrokkenheid) en stel verbeteringen voor"
 
 #: js/views/PageDetail.vue:515
 msgid "Please wait until the language is switched"

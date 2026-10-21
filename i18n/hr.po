@@ -2902,8 +2902,8 @@ msgid "Error: %{msg}"
 msgstr "Greška: %{msg}"
 
 #: js/views/PageDetail.vue:508 js/views/PageDetail.vue:672
-msgid "Rate this page and suggest improvements"
-msgstr "Ocijeni ovu stranicu i predloži poboljšanja"
+msgid "Score this page 1–10 per area (content quality, readability, SEO, UX, engagement) and suggest improvements"
+msgstr "Ocijeni ovu stranicu od 1 do 10 po području (kvaliteta sadržaja, čitljivost, SEO, UX, angažman) i predloži poboljšanja"
 
 #: js/views/PageDetail.vue:515
 msgid "Please wait until the language is switched"

@@ -2904,8 +2904,8 @@ msgid "Error: %{msg}"
 msgstr "Σφάλμα: %{msg}"
 
 #: js/views/PageDetail.vue:508 js/views/PageDetail.vue:672
-msgid "Rate this page and suggest improvements"
-msgstr "Αξιολόγησε αυτή τη σελίδα και πρότεινε βελτιώσεις"
+msgid "Score this page 1–10 per area (content quality, readability, SEO, UX, engagement) and suggest improvements"
+msgstr "Βαθμολόγησε αυτή τη σελίδα από 1 έως 10 ανά τομέα (ποιότητα περιεχομένου, αναγνωσιμότητα, SEO, UX, αλληλεπίδραση) και πρότεινε βελτιώσεις"
 
 #: js/views/PageDetail.vue:515
 msgid "Please wait until the language is switched"

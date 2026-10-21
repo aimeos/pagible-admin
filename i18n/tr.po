@@ -2888,8 +2888,8 @@ msgid "Error: %{msg}"
 msgstr "Hata: %{msg}"
 
 #: js/views/PageDetail.vue:508 js/views/PageDetail.vue:672
-msgid "Rate this page and suggest improvements"
-msgstr "Bu sayfayı değerlendir ve iyileştirmeler öner"
+msgid "Score this page 1–10 per area (content quality, readability, SEO, UX, engagement) and suggest improvements"
+msgstr "Bu sayfayı her alan için 1–10 arasında puanla (içerik kalitesi, okunabilirlik, SEO, UX, etkileşim) ve iyileştirmeler öner"
 
 #: js/views/PageDetail.vue:515
 msgid "Please wait until the language is switched"

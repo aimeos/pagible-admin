@@ -2886,8 +2886,8 @@ msgid "Error: %{msg}"
 msgstr "Xəta: %{msg}"
 
 #: js/views/PageDetail.vue:508 js/views/PageDetail.vue:672
-msgid "Rate this page and suggest improvements"
-msgstr "Bu səhifəni qiymətləndir və təkmilləşdirmələr təklif et"
+msgid "Score this page 1–10 per area (content quality, readability, SEO, UX, engagement) and suggest improvements"
+msgstr "Bu səhifəyə hər sahə üzrə 1–10 bal ver (məzmun keyfiyyəti, oxunaqlılıq, SEO, UX, cəlbedicilik) və təkmilləşdirmələr təklif et"
 
 #: js/views/PageDetail.vue:515
 msgid "Please wait until the language is switched"

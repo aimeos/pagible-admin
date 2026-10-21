@@ -2834,8 +2834,8 @@ msgid "Error: %{msg}"
 msgstr "오류: %{msg}"
 
 #: js/views/PageDetail.vue:508 js/views/PageDetail.vue:672
-msgid "Rate this page and suggest improvements"
-msgstr "이 페이지를 평가하고 개선 사항을 제안해 줘"
+msgid "Score this page 1–10 per area (content quality, readability, SEO, UX, engagement) and suggest improvements"
+msgstr "이 페이지를 영역별로 1~10점으로 평가하고(콘텐츠 품질, 가독성, SEO, UX, 참여도) 개선 사항을 제안해 줘"
 
 #: js/views/PageDetail.vue:515
 msgid "Please wait until the language is switched"

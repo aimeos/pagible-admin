@@ -2870,8 +2870,8 @@ msgid "Error: %{msg}"
 msgstr "Viga: %{msg}"
 
 #: js/views/PageDetail.vue:508 js/views/PageDetail.vue:672
-msgid "Rate this page and suggest improvements"
-msgstr "Hinda seda lehekülge ja soovita parandusi"
+msgid "Score this page 1–10 per area (content quality, readability, SEO, UX, engagement) and suggest improvements"
+msgstr "Hinda seda lehekülge igas valdkonnas skaalal 1–10 (sisu kvaliteet, loetavus, SEO, UX, kaasatus) ja soovita parandusi"
 
 #: js/views/PageDetail.vue:515
 msgid "Please wait until the language is switched"

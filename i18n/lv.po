@@ -2912,8 +2912,8 @@ msgid "Error: %{msg}"
 msgstr "Kļūda: %{msg}"
 
 #: js/views/PageDetail.vue:508 js/views/PageDetail.vue:672
-msgid "Rate this page and suggest improvements"
-msgstr "Novērtē šo lapu un iesaki uzlabojumus"
+msgid "Score this page 1–10 per area (content quality, readability, SEO, UX, engagement) and suggest improvements"
+msgstr "Novērtē šo lapu katrā jomā no 1 līdz 10 (satura kvalitāte, lasāmība, SEO, UX, iesaiste) un iesaki uzlabojumus"
 
 #: js/views/PageDetail.vue:515
 msgid "Please wait until the language is switched"

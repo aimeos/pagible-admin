@@ -2891,8 +2891,8 @@ msgid "Error: %{msg}"
 msgstr "Hiba: %{msg}"
 
 #: js/views/PageDetail.vue:508 js/views/PageDetail.vue:672
-msgid "Rate this page and suggest improvements"
-msgstr "Értékeld ezt az oldalt, és javasolj fejlesztéseket"
+msgid "Score this page 1–10 per area (content quality, readability, SEO, UX, engagement) and suggest improvements"
+msgstr "Pontozd ezt az oldalt területenként 1–10-ig (tartalom minősége, olvashatóság, SEO, UX, elköteleződés), és javasolj fejlesztéseket"
 
 #: js/views/PageDetail.vue:515
 msgid "Please wait until the language is switched"

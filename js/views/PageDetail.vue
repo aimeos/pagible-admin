@@ -505,7 +505,7 @@ export default {
 
     review() {
       this.chatOpen = true
-      this.$nextTick(() => this.$refs.chat?.send(this.$gettext('Rate this page and suggest improvements')))
+      this.$nextTick(() => this.$refs.chat?.send(this.$gettext('Score this page 1–10 per area (content quality, readability, SEO, UX, engagement) and suggest improvements')))
     },
 
     save(quiet = false) {
@@ -669,7 +669,7 @@ export default {
       <v-btn
         v-if="user.can('page:chat')"
         @click="review()"
-        :title="$gettext('Rate this page and suggest improvements')"
+        :title="$gettext('Score this page 1–10 per area (content quality, readability, SEO, UX, engagement) and suggest improvements')"
         :icon="mdiCreation"
         class="btn-review-page"
       />
